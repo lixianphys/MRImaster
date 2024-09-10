@@ -32,7 +32,7 @@ class CNN_TUMOR(nn.Module):
     # Network Initialisation
     def __init__(self, params):
         
-        super(CNN_TUMOR, self).__init__()
+        super().__init__()
     
         Cin,Hin,Win = params["shape_in"]
         init_f = params["initial_filters"] 
