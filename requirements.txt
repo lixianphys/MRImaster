@@ -5,4 +5,10 @@ torchvision
 pillow
 numpy
 python-multipart
-
+metaflow
+python-dotenv==1.0.1
+split-folders
+torch-summary
+pandas
+seaborn
+tabulate # for pandas
