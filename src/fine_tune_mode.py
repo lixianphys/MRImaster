@@ -11,9 +11,19 @@ from torch import optim
 from PIL import Image
 from utils import script_path
 from network import default_params_model
+import wandb
+import os
+from datapipe import KaggleDataPipe
 
-DATASET = "data/raw_data/Brain Tumor Data Set/Brain Tumor Data Set"
-OUTPUT = "brain"
+kaggle_link = "sartajbhuvaji/brain-tumor-classification-mri"
+dir_to_store = "data/raw_data/brain-tumor-classification-mri/"
+
+brain_tumor_dt = KaggleDataPipe(kaggle_link,dir_to_store)
+brain_tumor_dt.load_from_kaggle()
+labels = brain_tumor_dt.get_labels("Training")
+
+DATASET = os.path.join(dir_to_store,"Training")
+OUTPUT = "data/processed_data/brain-tumor-classification-mri"
 
 class FineTuneDropoutRate(FlowSpec):
     """
@@ -49,8 +59,15 @@ class FineTuneDropoutRate(FlowSpec):
         2) Split the dataset into train and test set.
         """
         # Dataset Path
+        wandb.init(
+            entity=os.getenv("WANDB_ENTITY"),
+            project=os.getenv("WANDB_PROJECT"))
+        
         data_dir = pathlib.Path(DATASET)
         train_ratio = self.load_params["train_ratio"]
+
+        wandb.config.train_ratio=train_ratio
+
         splitfolders.ratio(data_dir, output=OUTPUT, seed=20, ratio=(train_ratio, 1-train_ratio))
         # new dataset path
         data_dir = pathlib.Path(OUTPUT)

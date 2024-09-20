@@ -9,13 +9,21 @@ import torchvision
 import torchvision.transforms as transforms 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.nn as nn
+import os
 from torch import optim
 from PIL import Image
+from datapipe import KaggleDataPipe
 
 
-LABEL = "data/raw_data/metadata.csv"
-DATASET = "data/raw_data/Brain Tumor Data Set/Brain Tumor Data Set"
-OUTPUT = "brain"
+kaggle_link = "sartajbhuvaji/brain-tumor-classification-mri"
+dir_to_store = "data/raw_data/brain-tumor-classification-mri/"
+
+brain_tumor_dt = KaggleDataPipe(kaggle_link,dir_to_store)
+brain_tumor_dt.load_from_kaggle()
+labels = brain_tumor_dt.get_labels("Training")
+
+DATASET = os.path.join(dir_to_store,"Training")
+OUTPUT = "data/processed_data/brain-tumor-classification-mri"
 
 class TumorAnalysisModel(object):
     """
@@ -46,7 +54,7 @@ class TumorAnalysisModel(object):
         # define transformation
         transform = transforms.Compose(
             [
-                transforms.Resize((256,256)),
+                transforms.Resize(load_params["image_size"]),
                 transforms.RandomHorizontalFlip(p=0.5),
                 transforms.RandomVerticalFlip(p=0.5),
                 transforms.RandomRotation(30),
@@ -117,12 +125,12 @@ class TumorAnalysisModel(object):
 
         # Train Model n_epochs (the progress of training by printing the epoch number and the associated learning rate. It can be helpful for debugging, monitoring the learning rate schedule, or gaining insights into the training process.) 
     
-        for epoch in tqdm(range(1, epochs)):
+        for epoch in tqdm(range(epochs)):
             
             # Get the Learning Rate
             current_lr=get_lr(opt)
             if verbose:
-                print('Epoch {}/{}, current lr={}'.format(epoch, epochs, current_lr))
+                print('Epoch {}/{}, current lr={}'.format(epoch+1, epochs, current_lr))
 
             # Train Model Process
             self.model.train()
@@ -160,7 +168,7 @@ class TumorAnalysisModel(object):
                 self.model.load_state_dict(best_model_wts) 
 
             if verbose:
-                print(f"train loss: {train_loss:.6f}, dev loss: {val_loss:.6f}, accuracy: {100*val_metric:.2f}")
+                print(f"train loss: {train_loss:.6f}, val loss: {val_loss:.6f}, accuracy: {100*val_metric:.2f}")
                 print("-"*10) 
 
         # load best model weights
@@ -224,30 +232,31 @@ class TumorAnalysisModel(object):
 if __name__ == "__main__":
     from utils import CLA_label
 
-    model = TumorAnalysisModel("small", verbose=True)
+    workflow = TumorAnalysisModel("small", verbose=True)
     
     # Load the data
     load_params = {
         "train_ratio": 0.8,
-        "batch_size": 64
+        "batch_size": 64,
+        "image_size": (256,256),
     }
-    model.load_data(load_params)
+    workflow.load_data(load_params)
 
     model_params={
         "shape_in": (3,256,256), 
         "initial_filters": 8,    
         "num_fc1": 100,
         "dropout_rate": 0.25,
-        "num_classes": 2}
-    model.build_model(model_params)
+        "num_classes": 4}
+    workflow.build_model(model_params)
 
     train_params = {
-        "train": model.train_loader,
-        "val": model.val_loader,
+        "train": workflow.train_loader,
+        "val": workflow.val_loader,
         "epochs": 5,
         "lr"    : 3e-4,
-        "optimiser": optim.Adam(model.model.parameters(),lr=3e-4),
-        "lr_change": ReduceLROnPlateau(optim.Adam(model.model.parameters(),
+        "optimiser": optim.Adam(workflow.model.parameters(),lr=3e-4),
+        "lr_change": ReduceLROnPlateau(optim.Adam(workflow.model.parameters(),
                                         lr=3e-4),
                                         mode='min',
                                         factor=0.5,
@@ -256,10 +265,10 @@ if __name__ == "__main__":
         "f_loss": nn.NLLLoss(reduction="sum"),
         "weight_path": "model.pt",
     }
-    model.train(train_params, verbose=True)
-    # model.metrics_visualisation() 
-    prediction, probability = model.predict(Image.open("pred_examples/not cancer.jpg").convert('RGB'))
-    print(CLA_label[prediction], probability.numpy()[0][prediction])
+    workflow.train(train_params, verbose=True)
+    workflow.metrics_visualisation() 
+    # prediction, probability = workflow.predict(Image.open("pred_examples/not cancer.jpg").convert('RGB'))
+    # print(CLA_label[prediction], probability.numpy()[0][prediction])
 
 
 

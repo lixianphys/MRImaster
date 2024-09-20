@@ -1,5 +1,6 @@
 from metaflow import FlowSpec, IncludeFile, Parameter, step
 import pandas as pd
+import os
 import pathlib
 import splitfolders
 import torch
@@ -11,9 +12,19 @@ from torch import optim
 from PIL import Image
 from utils import script_path
 from network import default_params_model
+import os
+from datapipe import KaggleDataPipe
 
-DATASET = "data/raw_data/Brain Tumor Data Set/Brain Tumor Data Set"
-OUTPUT = "brain"
+
+kaggle_link = "sartajbhuvaji/brain-tumor-classification-mri"
+dir_to_store = "data/raw_data/brain-tumor-classification-mri/"
+
+brain_tumor_dt = KaggleDataPipe(kaggle_link,dir_to_store)
+brain_tumor_dt.load_from_kaggle()
+labels = brain_tumor_dt.get_labels("Training")
+
+DATASET = os.path.join(dir_to_store,"Training")
+OUTPUT = "data/processed_data/brain-tumor-classification-mri"
 
 class TumorAnalysisModel(FlowSpec):
     """
@@ -22,21 +33,24 @@ class TumorAnalysisModel(FlowSpec):
     2) Create the train_set and val_set
     3) Train the model
     """
-    mode = Parameter("mode", default="small")
+    mode = Parameter(
+        name = "mode",
+        help='Determines if only one batch of data is used for testing purposes', 
+        default="small")
     load_params = Parameter(
-        "load_params",
+        name = "load_params",
         help="The parameters for loading the data.",
         default={"train_ratio": 0.8, "batch_size": 64},
     )
     model_params = Parameter(
-        "model_params",
+        name = "model_params",
         help="The parameters for the model.",
         default=default_params_model,
     )
     image_path = Parameter(
         "image_path",
         help="The path to the image file.",
-        default="pred_examples/not cancer.jpg",
+        default="pred_examples/Healthy.jpg",
     )
 
     @step
@@ -100,6 +114,7 @@ class TumorAnalysisModel(FlowSpec):
         from utils import get_lr, loss_batch, loss_epoch
         import copy
         from tqdm import tqdm
+
 
         self.train_params = {
             "train": self.train_loader,
@@ -190,6 +205,8 @@ class TumorAnalysisModel(FlowSpec):
         self.model.load_state_dict(best_model_wts)
         self.loss_history = loss_history 
         self.metric_history = metric_history
+
+
         self.next(self.predict)
 
     @step
