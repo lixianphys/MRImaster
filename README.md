@@ -13,8 +13,8 @@ Cloud computing/storage - AWS EC2/S3
 ### AI experiments to run
 - [ ] Test the effect of augmentation (set up experiements with or without augmentation)
 - [ ] Test the effect of hyperparameters (learning_rate, batch_size)
+- [ ] Test the effect of the number of filters for each conv2d layer
 - [ ] Test tranfer training (VGG16)
-- [ ] 
 
 ### Features to add (ordered)
 - [ ] set up metrics, optimize the model via a variety of experiments listed in the preceeding section
