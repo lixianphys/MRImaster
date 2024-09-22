@@ -5,11 +5,16 @@ import matplotlib.pyplot as plt
 import itertools
 from torchvision import transforms
 
+
+labels = ["glioma tumor", "meningioma tumor", "no tumor", "pituitary tumor"]
 # Label Mapping
 CLA_label = {
-    0 : 'Brain Tumor',
-    1 : 'Healthy'
+    0 : labels[0],
+    1 : labels[1],
+    2 : labels[2],
+    3 : labels[3]
 } 
+
 
 def script_path(filename):
     """
@@ -33,9 +38,6 @@ def timeit(fn):
         print(f"Time taken in {fn.__name__}: {time.time() - start:.3f} seconds.")
         return output  # make sure that the decorator returns the output of fn
     return get_time
-
-def cat2num(value):
-    return 1 if value == "positive" else 0
 
 # Image Preprocessing (resize, normalize, convert to tensor)
 def preprocess_image(image):

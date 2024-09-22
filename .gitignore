@@ -16,3 +16,4 @@ data/
 brain/
 .ipynb_checkpoints/
 *.pt
+static/

@@ -71,18 +71,19 @@
     <div class="result-container" style="max-width: 600px; padding: 50px;">
 
         <h1>Prediction Result</h1>
+
         <p><strong>Predicted Class:</strong> {{ predicted_class }}</p>
         <p><strong>Probabilities:</strong> {{ probabilities }}</p>
-        
-        <p><strong>Uploaded Image:</strong></p>
-        <img src="{{ original_image_url }}" alt="Original Image", style="max-width: 30%; max-height: 400px; margin-bottom: 20px;">
 
-        <!-- Form to apply operation on the already uploaded image -->
-        <form action="/apply-gradcam" method="post">
-            <input type="hidden" name="image_url" value="{{ original_image_url }}">  <!-- Send image URL to backend -->
+
+        <p><strong>Processed Image:</strong></p>
+        <img src="{{ new_image_url }}" alt="Processed Image", style="max-width: 30%; max-height: 400px; margin-bottom: 20px;">
+
+        <form action="/result" method="post">
+            <input type="hidden" name="original_image_url" value="{{ original_image_url }}">
             <input type="hidden" name="predicted_class" value="{{ predicted_class }}">
             <input type="hidden" name="probabilities" value="{{ probabilities }}">
-            <button type="submit" style="padding: 12px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; margin-bottom: 20px;">Apply gradCAM</button>
+            <button type="submit" style="padding: 12px 20px; background-color: #FF9800; color: white; border: none; border-radius: 5px; margin-bottom: 20px;">Back to Result</button>
         </form>
 
         <a href="/" style="display: inline-block; padding: 12px 20px; background-color: #2196F3; color: white; text-decoration: none; border-radius: 5px;">Upload Another Image</a>
