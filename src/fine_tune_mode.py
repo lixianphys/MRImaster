@@ -27,28 +27,35 @@ OUTPUT = "data/processed_data/brain-tumor-classification-mri"
 
 class FineTuneDropoutRate(FlowSpec):
     """
-    The workflow performs the following steps:
-    1) Ingest a CSV into a Pandas Dataframe and split it into a train, eval, and test split
-    2) Create the train_set and val_set
-    3) Train the model
+    Fine tune hyperparameters, such as dropout rate
     """
-    mode = Parameter("mode", default="small")
+    mode = Parameter(
+        name = "mode",
+        help='Determines if running test on a small dataset', 
+        default="small")
 
     model_params = Parameter(
-        "model_params",
+        name = "model_params",
         help="The parameters for the model.",
         default=default_params_model,
     )
+
     image_path = Parameter(
-        "image_path",
+        name = "image_path",
         help="The path to the image file.",
         default="pred_examples/not cancer.jpg",
     )
 
     load_params = Parameter(
-        "load_params",
+        name = "load_params",
         help="The parameters for loading the data.",
-        default={"train_ratio": 0.8, "batch_size": 64},
+        default={"train_ratio": 0.8, "batch_size": 64, "image_size":(256,256)},
+    )
+
+    model_save_path = Parameter(
+        name = "save_model_to_path",
+        help="The path to save the parameters of the best model.",
+        default="model_to_deploy.pt",
     )
 
     @step

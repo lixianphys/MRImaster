@@ -29,28 +29,38 @@ OUTPUT = "data/processed_data/brain-tumor-classification-mri"
 class TumorAnalysisModel(FlowSpec):
     """
     The workflow performs the following steps:
-    1) Ingest a CSV into a Pandas Dataframe and split it into a train, eval, and test split
-    2) Create the train_set and val_set
-    3) Train the model
+    1) Import and augment data
+    2) Create dataloaders
+    3) Build the model
+    4) Train the model
+    5) Using the model to predict
+    6) Save the model
     """
     mode = Parameter(
         name = "mode",
-        help='Determines if only one batch of data is used for testing purposes', 
+        help='Determines if running test on a small dataset', 
         default="small")
+    
     load_params = Parameter(
         name = "load_params",
         help="The parameters for loading the data.",
-        default={"train_ratio": 0.8, "batch_size": 64},
-    )
+        default={"train_ratio": 0.8, "batch_size": 64，"image_size":(256,256)})
+                 
     model_params = Parameter(
         name = "model_params",
         help="The parameters for the model.",
         default=default_params_model,
     )
+
     image_path = Parameter(
-        "image_path",
+        name = "image_path",
         help="The path to the image file.",
         default="pred_examples/Healthy.jpg",
+    )
+    model_save_path = Parameter(
+        name = "save_model_to_path",
+        help="The path to save the parameters of the best model.",
+        default="model_to_deploy.pt",
     )
 
     @step
@@ -75,10 +85,13 @@ class TumorAnalysisModel(FlowSpec):
                 transforms.RandomVerticalFlip(p=0.5),
                 transforms.RandomRotation(30),
                 transforms.ToTensor(),
-                transforms.Normalize(mean = [0.485, 0.456, 0.406],std = [0.229, 0.224, 0.225])
+                transforms.Normalize(
+                    mean = [0.485, 0.456, 0.406],
+                    std = [0.229, 0.224, 0.225]
+                )
             ]
         )    
-        # Define an object of the custom dataset for the train and validation.
+        # Define an object of the custom dataset for the training and validation.
         train_set = torchvision.datasets.ImageFolder(data_dir.joinpath("train"), transform=transform) 
         val_set = torchvision.datasets.ImageFolder(data_dir.joinpath("val"), transform=transform)
 
@@ -119,7 +132,7 @@ class TumorAnalysisModel(FlowSpec):
         self.train_params = {
             "train": self.train_loader,
             "val": self.val_loader,
-            "epochs": 5,
+            "epochs": 60,
             "lr"    : 3e-4,
             "optimiser": optim.Adam(self.model.parameters(),lr=3e-4),
             "lr_change": ReduceLROnPlateau(optim.Adam(self.model.parameters(),
@@ -159,11 +172,11 @@ class TumorAnalysisModel(FlowSpec):
 
         # Train Model n_epochs (the progress of training by printing the epoch number and the associated learning rate. It can be helpful for debugging, monitoring the learning rate schedule, or gaining insights into the training process.) 
     
-        for epoch in tqdm(range(1, epochs)):
+        for epoch in tqdm(range(epochs)):
             
             # Get the Learning Rate
             current_lr=get_lr(opt)
-            print('Epoch {}/{}, current lr={}'.format(epoch, epochs, current_lr))
+            print('Epoch {}/{}, current lr={}'.format(epoch+1, epochs, current_lr))
 
             # Train Model Process
             self.model.train()
@@ -198,8 +211,8 @@ class TumorAnalysisModel(FlowSpec):
                 print("Loading best model weights!")
                 self.model.load_state_dict(best_model_wts) 
 
-                print(f"train loss: {train_loss:.6f}, dev loss: {val_loss:.6f}, accuracy: {100*val_metric:.2f}")
-                print("-"*10) 
+                print(f"train loss: {train_loss:.6f}, eval loss: {val_loss:.6f}, accuracy: {100*val_metric:.2f}")
+                print("-"*10)
 
         # load best model weights
         self.model.load_state_dict(best_model_wts)
@@ -227,8 +240,12 @@ class TumorAnalysisModel(FlowSpec):
         
         print(CLA_label[predicted_class.item()], probabilities.numpy()[0][predicted_class.item()])
 
+        self.next(self.save_model)
+    
+    @step
+    def save_model(self):
+        torch.save(self.model.state_dict(), model_save_path)
         self.next(self.end)
-        
     
     @step
     def end(self):
@@ -239,5 +256,3 @@ class TumorAnalysisModel(FlowSpec):
 
 if __name__ == "__main__":
     TumorAnalysisModel()
-
-
