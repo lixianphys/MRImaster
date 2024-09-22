@@ -1,4 +1,4 @@
-# MRIMaster: AI-supported medical imaging classifier
+# MRIMaster: AI-supported medical imaging classifier (Ongoing)
 
 ### How to Use The Best Model locally
 
