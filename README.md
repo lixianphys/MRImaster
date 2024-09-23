@@ -41,11 +41,11 @@ Any browser visit http://localhost:8000
     <img src="static/workflow_mrimaster.png" alt="Description" style="width:600px; height:auto; display:block; margin-left:auto; margin-right:auto;">
 </figure>
 
-- Setup your credentials in .env file
-- `src/train_model.py` is used to train the model locally without monitoring
-- `src/train_model_metaflow.py` is used to train the model locally or remotely with monitoring (Under development)
-- `fine_tune_mode.py` is used to fine tune the model (e.g.,various hyperparameters)
-- Notice to replace the `model_to_deploy.pt` if a better model is trained and examined, consistently deplopying the best model.
+- Set up your credentials in the .env file
+- Use `src/train_model.py` to train the model locally without monitoring
+- The `src/train_model_metaflow.py` script (still under development) allows for training the model locally or remotely with monitoring.
+- Use `fine_tune_mode.py` to fine tune the model by experimenting with various hyperparameters.
+- Replace `model_to_deploy.pt` with the latest, best-performing model after training and evalution to ensure consistent deplopyment of the optimal model.
 
 
 ## Structure
