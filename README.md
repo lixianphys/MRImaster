@@ -33,14 +33,12 @@ python app.py
 ## Deploy The Best Model Locally
 Any browser visit http://localhost:8000
 <figure style="text-align: center;">
-    <img src="static/api_ui.png" alt="Description" style="width:500px; height:auto; display:block; margin-left:auto; margin-right:auto;">
-    <figcaption>Frontend</figcaption>
+    <img src="static/api_ui.png" alt="Description" style="width:600px; height:auto; display:block; margin-left:auto; margin-right:auto;">
 </figure>
 
 ## Training and Deployment (Local and Cloud Solution)
 <figure style="text-align: center;">
-    <img src="static/workflow_mrimaster.png" alt="Description" style="width:500px; height:auto; display:block; margin-left:auto; margin-right:auto;">
-    <figcaption>Frontend</figcaption>
+    <img src="static/workflow_mrimaster.png" alt="Description" style="width:600px; height:auto; display:block; margin-left:auto; margin-right:auto;">
 </figure>
 
 - Setup your credentials in .env file
