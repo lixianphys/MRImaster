@@ -16,4 +16,5 @@ data/
 brain/
 .ipynb_checkpoints/
 *.pt
+!model_to_deploy.pt
 static/uploads
