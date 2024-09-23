@@ -1,15 +1,22 @@
 # MRIMaster: AI-supported medical imaging classifier
 
-### How to Use The Best Model locally
+## Installation
+Docker hub
+PYPI
+
+## 
+
+
+## How to Use The Best Model Locally
 
 ![api_ui](static/api_ui.png)
 
 
-### Train the model and deploy it (local and cloud solution)
+## Training and Deployment (Local and Cloud Solution)
 
 ![workflow](static/workflow_mrimaster.png)
 
-### Structure
+## Structure
 ```
 /root
 ├── app.py
@@ -20,17 +27,18 @@
 │   └── result.html
 │   └── apply_gradcam.html
 ├── static
-│   ├── styles.css
-│   └── uploads
+├── data
+│   └── raw_data/
+│   └── processed_data/
 │── .env
 ``` 
 
-### Experiments to run
+## Experiments to run
 - [ ] Augmentation (with or without augmentation)
 - [ ] Hyperparameters (learning_rate, batch_size, etc)
 - [ ] The number of filters for each conv2d layer
 
-### Features to add (in order)
+## Features to add (in order)
 - [ ] Enable switching between models for different classification tasks
 - [ ] Build data pipeline for additional datasets beyond Kaggle, e.g., [TCIA API](https://wiki.cancerimagingarchive.net/display/Public/TCIA+Programmatic+Interface+REST+API+Guides)
 - [ ] Add object detection for identifying and measuring tumor size
