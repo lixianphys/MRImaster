@@ -43,6 +43,12 @@ Any browser visit http://localhost:8000
     <figcaption>Frontend</figcaption>
 </figure>
 
+- Setup your credentials in .env file
+- `src/train_model.py` is used to train the model locally without monitoring
+- `src/train_model_metaflow.py` is used to train the model locally or remotely with monitoring (Under development)
+- `fine_tune_mode.py` is used to fine tune the model (e.g.,various hyperparameters)
+- Notice to replace the `model_to_deploy.pt` if a better model is trained and examined, consistently deplopying the best model.
+
 
 ## Structure
 ```
