@@ -1,0 +1,15 @@
+#conda.yaml
+name: mlflow_pipeline
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pandas
+  - mlflow
+  - requests
+  - pip
+  - torch
+  - splitfolders
+  - torchvision
+  - pillow
+  - pathlib
