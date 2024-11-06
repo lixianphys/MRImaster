@@ -18,3 +18,4 @@ brain/
 *.pt
 !model_to_deploy.pt
 static/uploads
+mlruns/
