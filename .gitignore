@@ -12,6 +12,7 @@ __pycache__/
 wandb/
 data/
 *.env
+!e.env
 *.ps1
 brain/
 .ipynb_checkpoints/
