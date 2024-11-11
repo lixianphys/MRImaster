@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from src.network import CNN_TUMOR, im2gradCAM
-from src.utils import preprocess_image, CLA_label
+from src.utils.utils import preprocess_image, CLA_label
 import uuid
 import os
 
