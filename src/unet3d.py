@@ -7,36 +7,26 @@ class UNet3D(nn.Module):
         super(UNet3D, self).__init__()
         
         # Encoding path (down-sampling)
-        self.enc1 = self.conv_block(in_channels, 32)
-        self.enc2 = self.conv_block(32, 64)
-        self.enc3 = self.conv_block(64, 128)
-        self.enc4 = self.conv_block(128, 256)
+        self.enc1 = UNet3D._conv_block(in_channels, 32)
+        self.enc2 = UNet3D._conv_block(32, 64)
+        self.enc3 = UNet3D._conv_block(64, 128)
+        self.enc4 = UNet3D._conv_block(128, 256)
         
         # Bottleneck
-        self.bottleneck = self.conv_block(256, 512)
+        self.bottleneck = UNet3D._conv_block(256, 512)
         
         # Decoding path (up-sampling)
         self.upconv4 = nn.ConvTranspose3d(512, 256, kernel_size=2, stride=2)
-        self.dec4 = self.conv_block(512, 256)
+        self.dec4 = UNet3D._conv_block(512, 256)
         self.upconv3 = nn.ConvTranspose3d(256, 128, kernel_size=2, stride=2)
-        self.dec3 = self.conv_block(256, 128)
+        self.dec3 = UNet3D._conv_block(256, 128)
         self.upconv2 = nn.ConvTranspose3d(128, 64, kernel_size=2, stride=2)
-        self.dec2 = self.conv_block(128, 64)
+        self.dec2 = UNet3D._conv_block(128, 64)
         self.upconv1 = nn.ConvTranspose3d(64, 32, kernel_size=2, stride=2)
-        self.dec1 = self.conv_block(64, 32)
+        self.dec1 = UNet3D._conv_block(64, 32)
         
         # Output layer
         self.out_conv = nn.Conv3d(32, out_channels, kernel_size=1)
-
-    def conv_block(self, in_channels, out_channels):
-        return nn.Sequential(
-            nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm3d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm3d(out_channels),
-            nn.ReLU(inplace=True)
-        )
 
     def forward(self, x):
         # Encoding path
@@ -68,6 +58,17 @@ class UNet3D(nn.Module):
         # Output layer
         out = self.out_conv(dec1)
         return out
+    
+    @staticmethod
+    def _conv_block(in_channels, out_channels):
+        return nn.Sequential(
+            nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm3d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm3d(out_channels),
+            nn.ReLU(inplace=True)
+        )
 
 
 

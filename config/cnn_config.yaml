@@ -1,0 +1,31 @@
+# cnn_config.yaml
+model:
+  type: "cnn"
+  shape_in: [3,256,256]
+  num_classes: 4
+  initial_filters: 8
+  num_fc1: 100
+  dropout_rate: 0.25
+  save_path: "models/unet_model/unet_model.pth"
+
+data:
+  dataset_path: "data/raw_data/brain-tumor-classification-mri/Training"
+  output_path: "data/processed_data/brain-tumor-classification-mri"
+  train_path: "data/processed_data/brain-tumor-classification-mri/train"
+  val_path: "data/processed_data/brain-tumor-classification-mri/val"
+
+
+loading:
+  train_ratio: 0.8
+  image_size: [256,256]
+
+training:
+  batch_size: 64
+  epochs: 5
+  learning_rate: 3e-4
+  verbose: true
+
+mlflow:
+  enabled: true
+  tracking_uri: "http://localhost:5000"
+  experiment_name: "MRI_Classifier"

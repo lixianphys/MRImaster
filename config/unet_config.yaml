@@ -1,0 +1,23 @@
+# Configuration for 3D UNet Model
+
+model:
+  type : unet3d
+  in_channels: 4                # Number of input channels (e.g., 1 for grayscale MRI)
+  out_channels: 4              # Number of output channels (e.g., 1 for binary segmentation)
+  save_path: "models/unet_model/unet_model.pth"
+
+training:
+  batch_size: 1                 # Batch size (adjust based on available GPU memory)
+  epochs: 5                    # Number of training epochs
+  learning_rate: 0.0001         # Learning rate for the optimizer
+  verbose: true
+
+data:
+  data_path: "data/raw_data/BRAT"     # Path to the training dataset (3D volumes)
+  cache_path: "data/processed_data/cache_dir"
+
+mlflow:
+  enabled: true                 # Enable MLflow logging
+  tracking_uri: "http://localhost:5000"  # MLflow server URI
+  experiment_name: "3D_UNet_MRI_Segmentation"  # Name of the MLflow experiment
+  log_frequency: 1               # Log metrics every epoch (or a different frequency if desired)

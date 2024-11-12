@@ -6,6 +6,28 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
 
+brat_metadata = {
+    "name": "BRATS", 
+    "description": "Gliomas segmentation tumour and oedema in on brain images",
+    "reference": "https://www.med.upenn.edu/sbia/brats2017.html",
+    "licence":"CC-BY-SA 4.0",
+    "release":"2.0 04/05/2018",
+    "tensorImageSize": "4D",
+    "modality": { 
+        "0": "FLAIR", 
+        "1": "T1w", 
+        "2": "t1gd",
+        "3": "T2w"
+    },  
+    "labels": { 
+        "0": "background", 
+        "1": "edema",
+        "2": "non-enhancing tumor",
+        "3": "enhancing tumour"
+    }
+}
+
+
 class LazyLoadingNiftiDataset(Dataset):
     def __init__(self, image_paths, label_paths, cache_dir, target_shape=(128, 128, 128), transforms=None):
         self.image_paths = image_paths

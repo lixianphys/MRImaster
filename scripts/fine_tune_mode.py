@@ -1,6 +1,5 @@
 from metaflow import FlowSpec, IncludeFile, Parameter, step
 import pandas as pd
-import os
 import pathlib
 import splitfolders
 import torch
@@ -11,9 +10,10 @@ import torch.nn as nn
 from torch import optim
 from PIL import Image
 from src.utils.utils import script_path
-from src.network import default_params_model
-from src.preprocess.kaggledata import KaggleDataPipe
-
+from network import default_params_model
+import wandb
+import os
+from src.data_propessing.kaggledata import KaggleDataPipe
 
 kaggle_link = "sartajbhuvaji/brain-tumor-classification-mri"
 dir_to_store = "data/raw_data/brain-tumor-classification-mri/"
@@ -25,26 +25,15 @@ labels = brain_tumor_dt.get_labels("Training")
 DATASET = os.path.join(dir_to_store,"Training")
 OUTPUT = "data/processed_data/brain-tumor-classification-mri"
 
-class TumorAnalysisModel(FlowSpec):
+class FineTuneDropoutRate(FlowSpec):
     """
-    The workflow performs the following steps:
-    1) Import and augment data
-    2) Create dataloaders
-    3) Build the model
-    4) Train the model
-    5) Using the model to predict
-    6) Save the model
+    Fine tune hyperparameters, such as dropout rate
     """
     mode = Parameter(
         name = "mode",
         help='Determines if running test on a small dataset', 
         default="small")
-    
-    load_params = Parameter(
-        name = "load_params",
-        help="The parameters for loading the data.",
-        default={"train_ratio": 0.8, "batch_size": 64，"image_size":(256,256)})
-                 
+
     model_params = Parameter(
         name = "model_params",
         help="The parameters for the model.",
@@ -54,8 +43,15 @@ class TumorAnalysisModel(FlowSpec):
     image_path = Parameter(
         name = "image_path",
         help="The path to the image file.",
-        default="pred_examples/Healthy.jpg",
+        default="pred_examples/not cancer.jpg",
     )
+
+    load_params = Parameter(
+        name = "load_params",
+        help="The parameters for loading the data.",
+        default={"train_ratio": 0.8, "batch_size": 64, "image_size":(256,256)},
+    )
+
     model_save_path = Parameter(
         name = "save_model_to_path",
         help="The path to save the parameters of the best model.",
@@ -70,8 +66,15 @@ class TumorAnalysisModel(FlowSpec):
         2) Split the dataset into train and test set.
         """
         # Dataset Path
+        wandb.init(
+            entity=os.getenv("WANDB_ENTITY"),
+            project=os.getenv("WANDB_PROJECT"))
+        
         data_dir = pathlib.Path(DATASET)
         train_ratio = self.load_params["train_ratio"]
+
+        wandb.config.train_ratio=train_ratio
+
         splitfolders.ratio(data_dir, output=OUTPUT, seed=20, ratio=(train_ratio, 1-train_ratio))
         # new dataset path
         data_dir = pathlib.Path(OUTPUT)
@@ -84,13 +87,10 @@ class TumorAnalysisModel(FlowSpec):
                 transforms.RandomVerticalFlip(p=0.5),
                 transforms.RandomRotation(30),
                 transforms.ToTensor(),
-                transforms.Normalize(
-                    mean = [0.485, 0.456, 0.406],
-                    std = [0.229, 0.224, 0.225]
-                )
+                transforms.Normalize(mean = [0.485, 0.456, 0.406],std = [0.229, 0.224, 0.225])
             ]
         )    
-        # Define an object of the custom dataset for the training and validation.
+        # Define an object of the custom dataset for the train and validation.
         train_set = torchvision.datasets.ImageFolder(data_dir.joinpath("train"), transform=transform) 
         val_set = torchvision.datasets.ImageFolder(data_dir.joinpath("val"), transform=transform)
 
@@ -99,19 +99,22 @@ class TumorAnalysisModel(FlowSpec):
 
         if self.mode == "small":
         
-            batch_size = 10
-            train_set = torch.utils.data.Subset(train_set, torch.arange(0, 100))
-            val_set = torch.utils.data.Subset(val_set, torch.arange(0, 100))
+            batch_size = 25
+            train_set = torch.utils.data.Subset(train_set, torch.arange(0, 500))
+            val_set = torch.utils.data.Subset(val_set, torch.arange(0, 500))
 
         self.train_loader = torch.utils.data.DataLoader(train_set, batch_size = batch_size, shuffle = True, num_workers = 2)
         self.val_loader = torch.utils.data.DataLoader(val_set, batch_size = batch_size, shuffle = True, num_workers = 2)
-        self.next(self.build_model)
+        self.dropout_rate = [0.1,0.15,0.2,0.25]
+        self.next(self.build_model, foreach="dropout_rate")
     
     @step
     def build_model(self):
 
         from network import CNN_TUMOR
         from torchsummary import summary
+        # Assign the dropout rate to each branch
+        self.model_params["dropout_rate"] = self.input
         self.model = CNN_TUMOR(self.model_params)
         # define computation hardware approach (GPU/CPU)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -123,15 +126,14 @@ class TumorAnalysisModel(FlowSpec):
         """
         Train on train and evaluate on eval
         """
-        from utils import get_lr, loss_batch, loss_epoch
+        from src.utils.utils import get_lr, loss_batch, loss_epoch
         import copy
         from tqdm import tqdm
-
 
         self.train_params = {
             "train": self.train_loader,
             "val": self.val_loader,
-            "epochs": 60,
+            "epochs": 20,
             "lr"    : 3e-4,
             "optimiser": optim.Adam(self.model.parameters(),lr=3e-4),
             "lr_change": ReduceLROnPlateau(optim.Adam(self.model.parameters(),
@@ -171,11 +173,11 @@ class TumorAnalysisModel(FlowSpec):
 
         # Train Model n_epochs (the progress of training by printing the epoch number and the associated learning rate. It can be helpful for debugging, monitoring the learning rate schedule, or gaining insights into the training process.) 
     
-        for epoch in tqdm(range(epochs)):
+        for epoch in tqdm(range(1, epochs)):
             
             # Get the Learning Rate
             current_lr=get_lr(opt)
-            print('Epoch {}/{}, current lr={}'.format(epoch+1, epochs, current_lr))
+            print('Epoch {}/{}, current lr={}'.format(epoch, epochs, current_lr))
 
             # Train Model Process
             self.model.train()
@@ -210,41 +212,24 @@ class TumorAnalysisModel(FlowSpec):
                 print("Loading best model weights!")
                 self.model.load_state_dict(best_model_wts) 
 
-                print(f"train loss: {train_loss:.6f}, eval loss: {val_loss:.6f}, accuracy: {100*val_metric:.2f}")
-                print("-"*10)
+                print(f"train loss: {train_loss:.6f}, dev loss: {val_loss:.6f}, accuracy: {100*val_metric:.2f}")
+                print("-"*10) 
 
         # load best model weights
         self.model.load_state_dict(best_model_wts)
         self.loss_history = loss_history 
         self.metric_history = metric_history
-
-
-        self.next(self.predict)
-
-    @step
-    def predict(self):
-        from utils import preprocess_image, CLA_label
-        # Preprocess the image
-        image = preprocess_image(Image.open(self.image_path).convert('RGB'))
-        
-        # Run the model on the input image
-        with torch.no_grad():  # Disable gradient computation for faster inference
-            output = self.model(image)
-        
-        # Optionally, apply softmax to get probabilities
-        probabilities = torch.nn.functional.softmax(output, dim=1)
-        
-        # Get the predicted class (assuming single-label classification)
-        _, predicted_class = torch.max(probabilities, 1)
-        
-        print(CLA_label[predicted_class.item()], probabilities.numpy()[0][predicted_class.item()])
-
-        self.next(self.save_model)
+        self.next(self.join)
     
     @step
-    def save_model(self):
-        torch.save(self.model.state_dict(), model_save_path)
+    def join(self,inputs):
+        """
+        Join the results of the training.
+        """
+        self.loss_history = [input.loss_history for input in inputs]
+        self.metric_history = [input.metric_history for input in inputs]
         self.next(self.end)
+        
     
     @step
     def end(self):
@@ -254,4 +239,6 @@ class TumorAnalysisModel(FlowSpec):
         pass        
 
 if __name__ == "__main__":
-    TumorAnalysisModel()
+    FineTuneDropoutRate()
+
+
