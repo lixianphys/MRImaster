@@ -6,7 +6,7 @@ model:
   initial_filters: 8
   num_fc1: 100
   dropout_rate: 0.25
-  save_path: "models/unet_model/unet_model.pth"
+  save_path: "models/cnn_model/cnn_model.pt"
 
 data:
   dataset_path: "data/raw_data/brain-tumor-classification-mri/Training"

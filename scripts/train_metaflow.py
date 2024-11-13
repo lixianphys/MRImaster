@@ -11,7 +11,7 @@ import torch.nn as nn
 from torch import optim
 from PIL import Image
 from src.utils.utils import script_path
-from src.network import default_params_model
+from src.cnn import default_params_model
 from src.preprocess.kaggledata import KaggleDataPipe
 
 
@@ -43,7 +43,7 @@ class TumorAnalysisModel(FlowSpec):
     load_params = Parameter(
         name = "load_params",
         help="The parameters for loading the data.",
-        default={"train_ratio": 0.8, "batch_size": 64，"image_size":(256,256)})
+        default={"train_ratio": 0.8, "batch_size": 64, "image_size":(256,256)})
                  
     model_params = Parameter(
         name = "model_params",

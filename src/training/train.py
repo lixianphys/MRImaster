@@ -16,7 +16,7 @@ from tqdm import tqdm
 from src.preprocess.nifti import LazyLoadingNiftiDataset
 from torch.utils.data import DataLoader
 from src.unet3d import UNet3D
-from src.network import CNN_TUMOR
+from src.cnn import CNN_TUMOR
 from src.utils.utils import get_lr, loss_batch, loss_epoch
 import copy
 

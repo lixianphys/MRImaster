@@ -4,7 +4,7 @@ import nibabel as nib
 import numpy as np
 from PIL import Image
 from torchvision import transforms
-from src.network import CNN_TUMOR # Import the CNN model architecture
+from src.cnn import CNN_TUMOR # Import the CNN model architecture
 from src.unet3d import UNet3D
 
 def load_cnn_model(model_path, device, params):
@@ -32,7 +32,7 @@ def preprocess_image(image_path, device):
     image = transform(image).unsqueeze(0)  # Add batch dimension
     return image.to(device)
 
-def preprocess_volume(volume_path, device):
+def preprocess_volume(volume, device):
     def center_crop(img, target_shape=(128,128,128)):
         """Crop the center of the image to the target shape."""
         crop_slices = tuple(
@@ -40,12 +40,15 @@ def preprocess_volume(volume_path, device):
             for dim, target in zip(img.shape, target_shape)
         )
         return img[crop_slices]
-    volume = nib.load(volume_path).get_fdata()
+    if isinstance(volume, str):
+        volume = nib.load(volume).get_fdata()
     volume = center_crop(volume)
     volume = (volume-np.mean(volume))/np.std(volume)
     volume = np.clip(volume, 0, 1)
     volume = torch.tensor(volume, dtype=torch.float32).permute(3, 0, 1, 2).unsqueeze(0)
     return volume.to(device)
+
+
 
 def cnn_inference(model, image_tensor):
     with torch.no_grad():
@@ -66,15 +69,16 @@ def visualize_unet3d_prediction(inputs,pred_labels):
     import matplotlib.pyplot as plt
 
     slice_index = inputs.shape[2] // 3  # Choose a middle slice index in the depth dimension
+    print(f"slice_index = {slice_index}")
     # Visualize side-by-side
     _, axes = plt.subplots(1, 2, figsize=(10, 5))
 
     # Input - choose the first channel (e.g., FLAIR) or use a composite of multiple channels
-    axes[0].imshow(inputs[0, 0, slice_index, :, :], cmap="gray")
+    axes[0].imshow(inputs[0, 0, :, :, slice_index], cmap="gray")
     axes[0].set_title("Input (FLAIR)")
 
     # Prediction
-    axes[1].imshow(pred_labels[0, slice_index, :, :], cmap="tab10")  # Use a colormap for segmentation
+    axes[1].imshow(pred_labels[0, :, :, slice_index], cmap="tab10")  # Use a colormap for segmentation
     axes[1].set_title("Predicted Segmentation")
 
 

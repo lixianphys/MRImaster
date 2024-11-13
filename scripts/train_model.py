@@ -6,20 +6,7 @@ import os
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
 sys.path.append(project_root)
 import pandas as pd
-import pathlib
-import splitfolders
-import torch
-import torchvision
-import torchvision.transforms as transforms 
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.utils.data import DataLoader
-import torch.nn as nn
-from torch import optim
-from PIL import Image
-from src.preprocess.kaggledata import KaggleDataPipe
 from src.training.train import train_cnn, train_unet
-from src.utils.utils import CLA_label, get_lr
-from src.network import CNN_TUMOR, default_params_model
 import click
 import yaml
 
@@ -31,7 +18,7 @@ def load_config(config_path):
     return config
 
 @click.command()
-@click.option('--model', type=str, required=True, help="Model type to train ('cnn' or 'unet')")
+@click.option('--model', type=click.Choice(['cnn', 'unet3d']), required=True, help="Model type to train ('cnn' or 'unet')")
 @click.option('--config', type = click.Path(exists=True), required=True, help = "Path to the configuration YAML file")
 @click.option('--data_path', type = click.Path(exists=True), default = '/',help="Path to the training data directory.")
 @click.option('--use_mlflow', is_flag=True, help="Use MLflow for tracking training metrics and parameters.")
@@ -52,7 +39,7 @@ def train_model(model,config,data_path,use_mlflow):
     if model.lower() == 'cnn':
         click.echo("Training CNN model...")
         train_cnn(config)
-    elif model.lower() == 'unet':
+    elif model.lower() == 'unet3d':
         click.echo("Training UNet model...")
         train_unet(config)
     else:

@@ -1,6 +1,4 @@
 import kaggle as kg
-import boto3
-from dotenv import load_dotenv
 from pathlib import Path
 import os
 import matplotlib.pyplot as plt
