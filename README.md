@@ -2,12 +2,19 @@
 ### Table of Contents
 
 [How to run the app](#How-to-run-the-app)
+
 [Take a look at the app](#Take-a-look-at-the-app)
+
 [Datasets for training](#Datasets-for-training)
+
 [Data Preprocessing](#Data-Preprocessing)
+
 [Model](#Model)
+
 [Train](#Train)
+
 [Deploy](#Deploy)
+
 [Features to add](#features-to-add)
 
 ## For Users
