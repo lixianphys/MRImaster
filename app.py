@@ -1,122 +1,154 @@
-import torch
-from PIL import Image
-from fastapi import (FastAPI, UploadFile, File, Request, HTTPException, Form)
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
-from src.cnn import CNN_TUMOR, im2gradCAM
-from src.utils.utils import preprocess_image, CLA_label
-import uuid
+import streamlit as st
 import os
+import torch
+import nibabel as nib
+import numpy as np
+from matplotlib.colors import ListedColormap
+from PIL import Image
+from src.inference.predict import (
+    load_cnn_model, load_unet3d_model,
+    preprocess_image, preprocess_volume,
+    cnn_inference, unet3d_inference
+)
+from src.utils.utils import CLA_label
+from src.cnn import im2gradCAM
 
-best_model_wts = 'model_to_deploy.pt'
+# Define modalities and labels
+modalities = {
+    "0": "FLAIR",
+    "1": "T1w",
+    "2": "t1gd",
+    "3": "T2w"
+}
 
-params_model={
-        "shape_in": (3,256,256), 
-        "initial_filters": 8,    
-        "num_fc1": 100,
-        "dropout_rate": 0.25,
-        "num_classes": 4}
+labels = {
+    "0": "background",
+    "1": "edema",
+    "2": "non-enhancing tumor",
+    "3": "enhancing tumour"
+}
 
-# 1. Load the model
-model = CNN_TUMOR(params_model)  # Replace with your model class
-model.load_state_dict(torch.load(best_model_wts,map_location=torch.device('cpu'),weights_only=True))  # Load the saved model weights
-model.eval()  # Set model to evaluation mode
+axes = {
+    "0": "Sagittal",
+    "1": "Coronal",
+    "2": "Axial"
+}
 
-# 2. Predict function
-def predict(image):
-    # Preprocess the image
-    image = preprocess_image(image)
+
+# Load models once and cache them
+@st.cache_resource
+def load_models(device):
+    cnn_model = load_cnn_model("models/saved_models/model_cnn_best.pt", device, {
+            "shape_in":(3,256,256),
+            "num_classes":4,
+            "initial_filters":8,
+            "num_fc1":100,
+            "dropout_rate":0.25
+        })
+    unet3d_model = load_unet3d_model("models/unet_model/unet_model.pt", device, in_channels=4, out_channels=4)
+    return cnn_model, unet3d_model
+
+def main():
+    st.title("Medical Imaging Classifier and Segmenter")
+    st.write("Select a model and upload an image or 3D volume for inference.")
+
+    # Select the model type
+    model_type = st.selectbox("Choose the Model", ["CNN (2D Image Classification)", "UNet3D (3D Volume Segmentation)"])
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # Run the model on the input image
-    with torch.no_grad():  # Disable gradient computation for faster inference
-        output = model(image)
+    # Load models
+    cnn_model, unet3d_model = load_models(device)
     
-    # Optionally, apply softmax to get probabilities
-    probabilities = torch.nn.functional.softmax(output, dim=1)
-    
-    # Get the predicted class (assuming single-label classification)
-    _, predicted_class = torch.max(probabilities, 1)
-    
-    return predicted_class.item(), probabilities
+    if model_type == "CNN (2D Image Classification)":
+        st.subheader("2D Image Classification with CNN")
+        uploaded_image = st.file_uploader("Upload a 2D Image (JPEG/PNG)", type=["jpg", "jpeg", "png"])
+
+        if uploaded_image is not None:
+            # Load and display the image
+            image = Image.open(uploaded_image).convert("RGB")
+            st.image(image, caption="Uploaded Image", width=200)
+            cam_image = Image.fromarray(im2gradCAM(cnn_model, image)) 
+            st.image(cam_image, caption="Grad-CAM Image",width=200)
 
 
-app = FastAPI()
+            # Preprocess and inference
+            image_tensor = preprocess_image(uploaded_image, device)
+            prediction = cnn_inference(cnn_model, image_tensor)
+            st.write(f"**Prediction:** Class {CLA_label[prediction]}")
 
-UPLOAD_DIR = "static/uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+            # Optionally save Grad-CAM image
+            save_output = st.checkbox("Save Grad-CAM as png file")
+            if save_output:
+                cam_image.save("output/output_grad_cam_image.png")
+                st.write("**Output saved to `output/output_grad_cam_image.png`**")
 
-# Serve static files like CSS
-app.mount("/static", StaticFiles(directory="static"), name="static")
+    elif model_type == "UNet3D (3D Volume Segmentation)":
+        st.subheader("3D Volume Segmentation with UNet3D")
+        uploaded_volume = st.file_uploader("Upload a 3D Volume (NIfTI format)", type=["nii", "nii.gz"])
+        if uploaded_volume is not None:
+            # Directly pass the uploaded volume to preprocess_volume
+            volume_path = os.path.join("scripts",uploaded_volume.name)
 
-# Initialize template engine
-templates = Jinja2Templates(directory="templates")
+            volume_tensor = preprocess_volume(volume_path, device)
+            predicted_volume = unet3d_inference(unet3d_model, volume_tensor)
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+            # Streamlit options for modality and colormap
+            st.subheader("MRI Modality")
 
-@app.post("/result", response_class=HTMLResponse)
-async def result(
-    request: Request, 
-    file: UploadFile = File(None),
-    original_image_url: str = Form(None),
-    predicted_class = Form(None),
-    probabilities = Form(None)):
+            # Choose modality
+            modality_choice = st.selectbox("Choose MRI Modality", options=list(modalities.values()))
+            st.write(f"Selected Modality: {modality_choice}")
 
-    # Process the uploaded image
+            modality_key = next((k for k, v in modalities.items() if v == modality_choice), None)
 
-    if file:
-        # Save the uploaded image
-        img_filename = f"{uuid.uuid4().hex}.png"
-        img_path = os.path.join(UPLOAD_DIR, img_filename)
-        image = Image.open(file.file).convert("RGB")
-        image.save(img_path)
-        original_image_url = f"/static/uploads/{img_filename}"
-        predicted_class, probabilities = predict(image)
-        probabilities = f"{probabilities.tolist()[0][predicted_class]:0.3f}"
-        predicted_class = CLA_label[predicted_class]
-    elif not original_image_url:
-        # Raise an error if neither file nor original_image_url is provided
-        return HTMLResponse("Error: No image provided.", status_code=422)
-    # Return the result page with the uploaded image URL
-    return templates.TemplateResponse("result.html", {
-        "request": request,
-        "predicted_class": predicted_class,
-        "probabilities": probabilities,
-        "original_image_url":  original_image_url
-    })
+            axis_choice = st.selectbox("Choose the axis to display", options=list(axes.values()))
+            st.write(f"Selected Modality: {axis_choice}")
 
-@app.post("/apply-gradcam", response_class=HTMLResponse)
-async def apply_operation(
-    request: Request, 
-    image_url: str = Form(...),
-    predicted_class = Form(...),
-    probabilities = Form(...)):
-    # Open the image based on the provided URL
-    img_path = os.path.join(UPLOAD_DIR, os.path.basename(image_url))
-    image = Image.open(img_path)
+            axis_key = next((k for k, v in axes.items() if v == axis_choice), None)
 
-    # Apply gradCAM
-    new_image = Image.fromarray(im2gradCAM(model, image)) 
+            # Define color map based on labels
+            colors = {
+            "background": (0, 0, 0, 1),       # Black
+            "edema": (0.6, 0.8, 0.2, 1),      # Light green
+            "non-enhancing tumor": (0.3, 0.3, 0.7, 1),  # Blueish
+            "enhancing tumour": (1, 0.5, 0, 1)  # Orange
+            }
+            cmap = ListedColormap([colors[label] for label in labels.values()])
 
-    # Save the new image
-    new_img_filename = f"{uuid.uuid4().hex}.png"
-    new_img_path = os.path.join(UPLOAD_DIR, new_img_filename)
-    new_image.save(new_img_path)
 
-    # Redirect to the operation result page
-    return templates.TemplateResponse("apply_gradcam.html", {
-        "request": request,
-        "original_image_url": f"{image_url}",
-        "new_image_url": f"/static/uploads/{new_img_filename}",
-        "predicted_class": predicted_class,
-        "probabilities": probabilities,
-    })
+            # Display the segmented result
+            st.write("**Segmentation Result:**")
+            st.write("Displaying one slice of the 3D segmentation")
+            slice_idx = st.slider("Select Slice", 0, predicted_volume.shape[3] - 1, predicted_volume.shape[3] // 2)
+            permuted_volume = volume_tensor.permute(0,2,3,4,1).to(device).numpy()
 
-# Run the application with Uvicorn
+
+            volume_slice = {
+                "0": permuted_volume[0, slice_idx, :, :,int(modality_key)],
+                "1": permuted_volume[0, :, slice_idx, :,int(modality_key)],
+                "2": permuted_volume[0, :, :, slice_idx,int(modality_key)]
+            }[axis_key]
+            st.image(volume_slice,caption =f"Input Slice {slice_idx}",width=200)
+
+            predicted_slice = {
+                "0": predicted_volume[0, slice_idx, :, :],
+                "1": predicted_volume[0, :, slice_idx, :],
+                "2": predicted_volume[0, :, :, slice_idx]
+            }[axis_key]
+            image_array = predicted_slice
+            colored_image = cmap(image_array / 3)
+            st.image((colored_image * 255).astype(np.uint8),caption =f"Segmentation Slice {slice_idx}",width=200)
+
+            for _, label_name in labels.items():
+                color_patch = f"rgba({int(colors[label_name][0]*255)}, {int(colors[label_name][1]*255)}, {int(colors[label_name][2]*255)}, 1)"
+                st.markdown(f'<span style="color:{color_patch}; font-weight:bold;">⬤</span> {label_name}', unsafe_allow_html=True)
+
+            # Optionally save output
+            save_output = st.checkbox("Save output as NIfTI file")
+            if save_output:
+                predicted_volume_nifti = nib.Nifti1Image(predicted_volume.astype(np.float32), affine=np.eye(4))
+                nib.save(predicted_volume_nifti, "output/segmented_volume.nii")
+                st.write("**Output saved to `output/segmented_volume.nii`**")
+
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
-
-
+    main()

@@ -1,93 +1,68 @@
-# MRIMaster: AI-supported medical imaging classifier (Ongoing)
- # Table of Contents
+# For users
 
-[Installation](#Installation)
+## How to run the app
 
-[Deploy The Best Model Locally](#Deploy-The-Best-Model-Locally)
-
-[Structure](#Structure)
-
-[Domain Problem](#Domain-Problem)
-
-[Experiments to run](#Experiments-to-run)
-
-[Features to add](#Features-to-add)
-
-## Installation
-![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker)
-```cmd
-docker pull lx1201/mrimaster:v0.0.2
-docker run lx1201/mrimaster:v0.0.2
-```
 ![Github](https://img.shields.io/badge/github-000000?logo=github)
 ```cmd
 git clone git@github.com:lixianphys/MRImaster.git
 cd mrimaster
+git checkout published
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python app.py
+streamlit run app.py
 ```
 
-
-## Deploy The Best Model Locally
-Any browser visit http://localhost:8000
-<figure style="text-align: center;">
-    <img src="static/api_ui.png" alt="Description" style="width:600px; height:auto; display:block; margin-left:auto; margin-right:auto;">
-</figure>
-
-## Training and Deployment (Local and Cloud Solution)
-<figure style="text-align: center;">
-    <img src="static/workflow_mrimaster.png" alt="Description" style="width:600px; height:auto; display:block; margin-left:auto; margin-right:auto;">
-</figure>
-
-- Set up your credentials in the .env file
-- Use `src/train_model.py` to train the model locally without monitoring
-- The `src/train_model_metaflow.py` script (still under development) allows for training the model locally or remotely with monitoring.
-- Use `fine_tune_mode.py` to fine tune the model by experimenting with various hyperparameters.
-- Replace `model_to_deploy.pt` with the latest, best-performing model after training and evalution to ensure consistent deplopyment of the optimal model.
+## Take a look at the app user interface
+#### cnn model
+| ![Image 1](frontend/static/app-description/2d-image-upload.png) | ![Image 2](frontend/static/app-description/2d-image-result.png) |
+|-------------------------|------------------------|
+#### unet3d model
+| ![Image 1](frontend/static/app-description/3d-volume-upload.png) | ![Image 2](frontend/static/app-description/3d-volume-result.png) |
+|-------------------------|------------------------|
 
 
-## Structure
+# For developers
+## Datasets for training 
+### Brats dataset - Task01 Brain Tumor (cnn model)
+Brats2017 (Gliomas segmentation tumour and oedema in on brain images). "https://www.med.upenn.edu/sbia/brats2017.html"
+This 4D image dataset contains brain MR images together with segmentation masks. All images and masks are provided in `.nii.gz` format with 4 channels (FLAIR,T1w, t1gd and T2w) per image. Masks are categorical with four classes: background, edema, non-enhancing tumor and enhancing tumour.
+
+### Kaggle dataset - brain-tumor-classification-mri (unet3d model)
+This dataset contain Training and Testing folders. Each folder has four subfolders, which contain MRIs of respective tumor classes (Glioma, Meningioma, Pituitary and No Tumor) "https://www.kaggle.com/datasets/sartajbhuvaji/brain-tumor-classification-mri"
+
+## Data Preprocessing
+It is rather straightforward to download medium-sized, well-structured Kaggle dataset by using `src.preprocess.kaggledata.KaggleDataPipe`. While dealing with a large volume of `nii.gz` or `nii` files (a single file can exceed 100 Mb), we need to worry about how to reduce the loading time during training. For this consideration, please have a look at the design of `src.preprocess.nifti.LazyLoadingNiftiDataset` about caching and reloading.
+
+## Model
+For adapting models to more specific uses, some model hyperparameters, such as number of classes, can be modified directly at the `model` block in config files `config/cnn_cofig.yaml` and `config/unet_config.yaml`. Below are the default models for each type:
+- **cnn model**: 4 layers of convoluational neural network for classification task. Input is in shape of (C=3, H=256, W=256). Output is the prediction of 4 classes.
+- **unet3d model**: Unet shape for segmentation task. Input is in shape of (bach_size, C=4, H=128, W=128, D=128).
+
+## Train
 ```
-/root
-├── app.py
-├── model_to_deploy.pt
-├── src
-├── templates
-│   └── index.html
-│   └── result.html
-│   └── apply_gradcam.html
-├── static
-├── data
-│   └── raw_data/
-│   └── processed_data/
-│── .env
-``` 
+python scripts/train_model.py --model [cnn or unet3d] --config [path_to_config_file] --data_path [path_to_training_data, it will overwrite the config file] --use_mlflow
+```
+This command-line together with the config files for training different models (`cnn_config.yaml` and `unet_config.ymal`) provides a easy-to-go and flexible access to training your model. 
 
-## Domain Problem
+Before running this command-line, not only the most relevant `training` block in the config files should be checked and modified accordingly, but also the `data` and `mlflow` blocks should also be carefully scanned.
 
-### MRI Technologies
-Magnetic Resonance Imaging (MRI) is a non-invasive imaging technique widely used in diagnosing various medical conditions, especially when it comes to examining soft tissues like the brain. MRI uses strong magnetic fields and radio waves to create detailed images of the body's internal structures. This level of detail is crucial for identifying abnormalities, such as tumors, and has become a cornerstone in the diagnosis and monitoring of brain cancers.
+Additionally, adding `--use_mlflow` will log the experiment, parameters, metrics and artifacts into a MLflow server. Be sure that you have already spinned up one like this: 
+```
+mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns --host 0.0.0.0 --port 5000
+```
 
-### Three types of tumors (source: Cleveland Clinic website)
+## Inference
+Likewise, convienient inference directly from command-line is also offered:
+```
+python scripts/pred_model.py --model_type [cnn or unet3d] --config [path_to_config_file]
+```
+Modify the `config/inferecen_config.yaml` file, including the `model_path` pointing to the inference model. Be aware of the following hyperparameters (shape_in, num_classes, etc.), they should be compatible with the inference model. Last but not least, keep the value of `input_image_path` and `input_volume_path` updated.
 
-- A **glioma** is a tumor that forms when glial cells grow out of control. Normally, these cells support nerves and help your central nervous system work. Gliomas usually grow in the brain, but can also form in the spinal cord. Gliomas are **malignant** (cancerous), but some can be very slow growing.
-- A **meningioma** is a tumor that forms in your meninges, which are the layers of tissue that cover your brain and spinal cord. They’re **usually not cancerous** (benign), but can sometimes be cancerous (malignant). Meningiomas are treatable.
-- **Pituitary** adenomas are benign tumors on your pituitary gland. They’re **noncancerous**, but they can interfere with normal pituitary function and cause certain health conditions. Healthcare providers treat pituitary adenomas with surgery, medication, radiation or a combination of these therapies.
+For the cnn model, the prediction result is directly displayed. While the unet3d model would output a mask of predicted labels to the `output_path`, which should be modified accordingly.
 
-### Goal
-The goal of this project is to automatically classify MRI images of patients' brains into four categories: no tumor, glioma tumor, meningioma tumor, and pituitary tumor. This automation will enable doctors to focus on more critical tasks and make MRI services more affordable, benefiting both patients and the healthcare system.
+## Deploy
+In the previous single-modal version (`app_v0.py`), we used Fastapi framework to deploy this inference model locally. Here we adopt the Streamlit to deploy this multi-modal inference model (`app.py`). For more details about this app. Jump [here](#for-users) 
 
-### Challenges
-The images from the Kaggle dataset are well-labeled and divided into four categories for training and evaluation. However, the challenge lies in the fact that tumors can vary in size, and each MRI image represents only a two-dimensional slice of the tumor and surrounding normal brain tissue. For this task, I chose a **convolutional neural network (CNN)** as the classifier, as it is widely used and excels in image classification problems. 
-
-## Experiments to run
-- [ ] Augmentation (with or without augmentation)
-- [ ] Hyperparameters (learning_rate, batch_size, etc)
-- [ ] The number of filters for each conv2d layer
-
-## Features to add
-- [ ] Enable switching between models for different classification tasks
-- [ ] Build data pipeline for additional datasets beyond Kaggle, e.g., [TCIA API](https://wiki.cancerimagingarchive.net/display/Public/TCIA+Programmatic+Interface+REST+API+Guides)
-- [ ] Add object detection for identifying and measuring tumor size
+## Disclaimer
+This dataset contains medical images intended solely for research, educational, and informational purposes.
