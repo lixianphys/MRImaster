@@ -7,15 +7,9 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
 sys.path.append(project_root)
 import pandas as pd
 from src.training.train import train_cnn, train_unet
+from src.utils.utils import load_config_from_yaml
 import click
-import yaml
 
-
-def load_config(config_path):
-    """Load configuration from a YAML file"""
-    with open(config_path, 'r') as file:
-        config = yaml.safe_load(file)
-    return config
 
 @click.command()
 @click.option('--model', type=click.Choice(['cnn', 'unet3d']), required=True, help="Model type to train ('cnn' or 'unet')")
@@ -27,7 +21,7 @@ def train_model(model,config,data_path,use_mlflow):
     CLI command to train a model (CNN or UNet).
     """
     # Load configuration
-    config = load_config(config)
+    config = load_config_from_yaml(config)
 
     # Update data paths in the configuration if provided
     config['data']['train_path'] = data_path + '/train'

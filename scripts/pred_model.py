@@ -12,15 +12,8 @@ from src.inference.predict import (
     preprocess_image, preprocess_volume,
     cnn_inference, unet3d_inference,visualize_unet3d_prediction
 )
-import yaml
-from src.utils.utils import CLA_label
+from src.utils.utils import CLA_label,load_config_from_yaml
 
-
-def load_config(config_path):
-    """Load configuration from a YAML file."""
-    with open(config_path, 'r') as file:
-        config = yaml.safe_load(file)
-    return config
 
 @click.command()
 @click.option('--model_type', type=click.Choice(['cnn', 'unet3d']), required=True, help="Type of model to use for inference.")
@@ -30,7 +23,7 @@ def main(model_type, config_path):
     CLI for running inference with a CNN or 3D UNet model.
     """
     # Load the configuration file
-    config = load_config(config_path)
+    config = load_config_from_yaml(config_path)
     device = torch.device(config.get("device", "cuda" if torch.cuda.is_available() else "cpu"))
 
     if model_type == "cnn":

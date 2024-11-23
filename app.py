@@ -34,7 +34,6 @@ axes = {
     "2": "Axial"
 }
 
-
 # Load models once and cache them
 @st.cache_resource
 def load_models(device):
@@ -45,7 +44,7 @@ def load_models(device):
             "num_fc1":100,
             "dropout_rate":0.25
         })
-    unet3d_model = load_unet3d_model("models/unet_model/unet_model.pt", device, in_channels=4, out_channels=4)
+    unet3d_model = load_unet3d_model("models/saved_models/unet_model.pt", device, in_channels=4, out_channels=4)
     return cnn_model, unet3d_model
 
 def main():

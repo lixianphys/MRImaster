@@ -104,10 +104,11 @@ class LazyLoadingNiftiDataset(Dataset):
         return img[crop_slices]
 
 if __name__ == "__main__":
-
+    img_dir = r"data/imageTr"
+    label_dir = r"data/labelTr"
     # Paths to NIfTI images and labels
-    image_paths = ['../data/BRATS_484_img.nii','../data/BRATS_483_img.nii']
-    label_paths = ['../data/BRATS_484_lbl.nii','../data/BRATS_483_lbl.nii']
+    image_paths = [os.path.join(img_dir,'BRATS_001.nii.gz'),os.path.join(img_dir,'BRATS_002.nii.gz')]
+    label_paths = [os.path.join(label_dir,'BRATS_001.nii.gz'),os.path.join(img_dir,'BRATS_002.nii.gz')]
     cache_dir = "../data/cache_dir"
     # Initialize the dataset with caching
     dataset = LazyLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths, cache_dir=cache_dir)

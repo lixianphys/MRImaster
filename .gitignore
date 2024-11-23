@@ -21,4 +21,5 @@ brain/
 static/uploads
 mlruns/
 output/
+data/
 frontend/static/uploads

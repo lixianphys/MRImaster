@@ -14,7 +14,6 @@ data:
   train_path: "data/processed_data/brain-tumor-classification-mri/train"
   val_path: "data/processed_data/brain-tumor-classification-mri/val"
 
-
 loading:
   train_ratio: 0.8
   image_size: [256,256]

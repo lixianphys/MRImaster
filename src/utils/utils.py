@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import itertools
 from torchvision import transforms
-
+import yaml
 
 labels = ["glioma tumor", "meningioma tumor", "no tumor", "pituitary tumor"]
 # Label Mapping
@@ -13,6 +13,13 @@ CLA_label = {
     2 : labels[2],
     3 : labels[3]
 } 
+
+
+def load_config_from_yaml(config_path):
+    """Load configuration from a YAML file"""
+    with open(config_path, 'r') as file:
+        config = yaml.safe_load(file)
+    return config
 
 
 def script_path(filename):

@@ -35,6 +35,7 @@ def train_cnn(config):
     verbose = config['training']['verbose']
     learning_rate = float(config['training']['learning_rate'])
     mlflow_enabled = config['mlflow']['enabled']
+    model_save_path = config['model']['save_path']
 
     model = CNN_TUMOR(
         {
@@ -77,8 +78,6 @@ def train_cnn(config):
                                     mode='min',
                                     factor=0.5,
                                     patience=20,
-                                    verbose=0) 
-    weight_path =  "cnn_weights.pt"
     device=torch.device('cpu')
     
 
@@ -141,7 +140,7 @@ def train_cnn(config):
             best_model_wts = copy.deepcopy(model.state_dict())
             
             # store weights into a local file
-            torch.save(model.state_dict(), weight_path)
+            torch.save(model.state_dict(), model_save_path)
             if verbose:
                 print("Copied best model weights!")
         
@@ -222,9 +221,13 @@ def train_unet(config):
         mlflow.log_param("optimizer", "adam")
 
     # Paths to NIfTI images and labels
-    brat_data_path = config['data']['data_path']
-    image_paths = [os.path.join(brat_data_path,file_path) for file_path in ['BRATS_484_img.nii','BRATS_483_img.nii']]
-    label_paths = [os.path.join(brat_data_path,file_path) for file_path in ['BRATS_484_lbl.nii','BRATS_483_lbl.nii']]
+    brats_data_path = config['data']['data_path']
+    img_folder = os.path.join(brats_data_path,'imageTr')
+    lbl_folder = os.path.join(brats_data_path,'labelTr')
+    img_filenames = os.listdir(img_folder)
+    lbl_filenames = os.listdir(lbl_folder)
+    image_paths = [os.path.join(img_folder,file_path) for file_path in img_filenames]
+    label_paths = [os.path.join(lbl_folder,file_path) for file_path in lbl_filenames]
     cache_dir = config['data']['cache_path']
     # Initialize the dataset with caching
     dataset = LazyLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths, cache_dir=cache_dir)
@@ -255,6 +258,8 @@ def train_unet(config):
             running_loss += loss.item()
             if verbose:
                 print(f"Batch {batch+1}/{len(dataloader)}, Loss: {loss.item()}")
+            if mlflow_enabled:
+                mlflow.log_metric("train_loss_batch", loss.item(), step=batch)
         if verbose:
             print(f"Epoch {epoch+1}/{epochs}, Loss: {running_loss/len(dataloader)}")
                 # Log metrics to MLflow
