@@ -2,7 +2,7 @@
 device: "cpu"  # Options: "cuda" or "cpu"
 
 cnn:
-  model_path: "models/cnn_model/cnn_model.pt"
+  model_path: "models/saved_models/cnn_model.pt"
   shape_in: [3,256,256]
   num_classes: 4
   initial_filters: 8
@@ -11,7 +11,7 @@ cnn:
   input_image_path: "scripts/test_2dmri.jpg"  # Path to the input image
 
 unet3d:
-  model_path: "models/unet_model/unet_model.pt"
+  model_path: "models/saved_models/unet_model.pt"
   in_channels: 4
   out_channels: 4
   input_volume_path: "scripts/test_3dvol.nii"  # Path to the input 3D volume

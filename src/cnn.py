@@ -21,13 +21,7 @@ def findConv2dOutShape(hin,win,conv,pool=2):
         wout/=pool
     return int(hout),int(wout)
 
-# Define the Convolutional Block
-def convBlock(ni,no):
-    return nn.Sequential(
-        nn.Conv2d(ni, no, kernel_size=3),
-        nn.ReLU(inplace=True),
-        nn.MaxPool2d(2),
-    )
+
 
 # Define Architecture For CNN_TUMOR Model
 class CNN_TUMOR(nn.Module):
@@ -50,10 +44,10 @@ class CNN_TUMOR(nn.Module):
         self.num_flatten=h*w*8*init_f
 
         self.model = nn.Sequential(
-            convBlock(Cin,init_f),
-            convBlock(init_f,2*init_f),
-            convBlock(2*init_f,4*init_f),
-            convBlock(4*init_f,8*init_f),
+            CNN_TUMOR.convBlock(Cin,init_f),
+            CNN_TUMOR.convBlock(init_f,2*init_f),
+            CNN_TUMOR.convBlock(2*init_f,4*init_f),
+            CNN_TUMOR.convBlock(4*init_f,8*init_f),
             nn.Flatten(),
             nn.Linear(self.num_flatten, num_fc1),
             nn.Linear(num_fc1, num_classes)
@@ -61,6 +55,15 @@ class CNN_TUMOR(nn.Module):
 
     def forward(self,X):
         return F.log_softmax(self.model(X), dim=1)
+    
+    # Define the Convolutional Block
+    @staticmethod
+    def convBlock(ni,no):
+        return nn.Sequential(
+            nn.Conv2d(ni, no, kernel_size=3),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+        )
 
 
 #  Class Activation Mapping (CAM) 

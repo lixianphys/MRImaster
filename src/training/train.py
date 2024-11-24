@@ -17,7 +17,7 @@ from src.preprocess.nifti import LazyLoadingNiftiDataset
 from torch.utils.data import DataLoader
 from src.unet3d import UNet3D
 from src.cnn import CNN_TUMOR
-from src.utils.utils import get_lr, loss_batch, loss_epoch
+from src.utils.utils import get_lr,loss_epoch
 import copy
 
 
@@ -36,6 +36,7 @@ def train_cnn(config):
     learning_rate = float(config['training']['learning_rate'])
     mlflow_enabled = config['mlflow']['enabled']
     model_save_path = config['model']['save_path']
+    device=torch.device(config['training']['device'])
 
     model = CNN_TUMOR(
         {
@@ -46,7 +47,7 @@ def train_cnn(config):
         'dropout_rate':dropout_rate
     }
     )
-
+    print("Data Augmentation Starts ...")
     data_dir = pathlib.Path(config['data']['dataset_path'])
     train_ratio = config['loading']['train_ratio']
     splitfolders.ratio(data_dir, output=config['data']['output_path'], seed=20, ratio=(train_ratio, 1-train_ratio))
@@ -68,26 +69,22 @@ def train_cnn(config):
     train_set = torchvision.datasets.ImageFolder(data_dir.joinpath("train"), transform=transform) 
     val_set = torchvision.datasets.ImageFolder(data_dir.joinpath("val"), transform=transform)
 
-
     train_dl = DataLoader(train_set, batch_size = batch_size, shuffle = True, num_workers = 2)
     val_dl = DataLoader(val_set, batch_size = batch_size, shuffle = True, num_workers = 2)
     loss_func = nn.NLLLoss(reduction="sum")
     opt = optim.Adam(model.parameters(),lr=learning_rate) 
-    lr_scheduler =  ReduceLROnPlateau(optim.Adam(model.parameters(),
-                                    lr=learning_rate),
-                                    mode='min',
-                                    factor=0.5,
-                                    patience=20,
-    device=torch.device('cpu')
+    lr_scheduler =  ReduceLROnPlateau(
+        optimizer =optim.Adam(model.parameters(),
+        lr=learning_rate),
+        mode='min',
+        factor=0.5,
+        patience=20)
     
-
     if verbose:
         print("\n Training start...")
     # define loss function and optimizer
 
-
     model = model.to(device)
-
     
     # history of loss values in each epoch
     loss_history={"train": [],"val": []} 
@@ -112,6 +109,13 @@ def train_cnn(config):
         mlflow.log_param("epochs", epochs)
         mlflow.log_param("learning_rate", learning_rate)
         mlflow.log_param("optimizer", "adam")
+        mlflow.log_param("shape_in",shape_in)
+        mlflow.log_param("initial_filters",initial_filters)
+        mlflow.log_param("image_size",image_size)
+        mlflow.log_param("num_classes",num_classes)
+        mlflow.log_param("train_ratio",train_ratio)
+        mlflow.log_param("num_fc1",num_fc1)
+
 
     for epoch in tqdm(range(epochs)):
         
@@ -186,17 +190,27 @@ class DiceCrossEntropyLoss(nn.Module):
         outputs_soft = F.softmax(outputs, dim=1)  # Softmax along the channel dimension
         labels_one_hot = F.one_hot(labels, num_classes=outputs.shape[1]).permute(0, 4, 1, 2, 3).float()
         
-        dice_loss_value = 0
-        for i in range(outputs.shape[1]):  # For each class
-            dice_loss_value += DiceCrossEntropyLoss.dice_loss(outputs_soft[:, i], labels_one_hot[:, i])
+        dice_loss_value = DiceCrossEntropyLoss.dice_loss(outputs_soft, labels_one_hot)
         
-        # Combine the losses with equal weighting (adjust as needed)
-        return ce_loss + dice_loss_value / outputs.shape[1]
+       # Combine losses (equal weighting of CE and Dice)
+        total_loss = ce_loss + dice_loss_value
+        return total_loss
+    
     @staticmethod
-    def dice_loss(pred, target, smooth=1.0):
-        intersection = (pred * target).sum()
-        dice = (2. * intersection + smooth) / (pred.sum() + target.sum() + smooth)
-        return 1 - dice
+    def dice_loss(outputs_soft, labels_one_hot, smooth=1.0):
+        """
+        Compute the average Dice loss across all classes.
+        """
+        dice_loss_per_class = []
+        for i in range(outputs_soft.shape[1]):  # Loop over each class
+            pred = outputs_soft[:, i]  # Softmax probability for class `i`
+            target = labels_one_hot[:, i]  # One-hot encoded ground truth for class `i`
+            intersection = (pred * target).sum(dim=(1, 2, 3))  # Sum over spatial dimensions
+            dice = (2.0 * intersection + smooth) / (pred.sum(dim=(1, 2, 3)) + target.sum(dim=(1, 2, 3)) + smooth)
+            dice_loss_per_class.append(1 - dice)  # Dice loss for class `i`
+        # Average Dice loss over batch and classes
+        dice_loss = torch.mean(torch.stack(dice_loss_per_class, dim=1), dim=1)  # Average over classes
+        return dice_loss.mean()  # Average over batch
 
 def train_unet(config):
     """ Train a 3D Unet model"""
@@ -219,13 +233,19 @@ def train_unet(config):
         mlflow.log_param("epochs", epochs)
         mlflow.log_param("learning_rate", learning_rate)
         mlflow.log_param("optimizer", "adam")
+        mlflow.log_param("in_channels",in_channels)
+        mlflow.log_param("out_channels",out_channels)
 
     # Paths to NIfTI images and labels
     brats_data_path = config['data']['data_path']
+    # place all images (nii or nii.gz) in data_path/imageTr
     img_folder = os.path.join(brats_data_path,'imageTr')
+    # place all labels (nii or nii.gz) in data_path/labelTr
     lbl_folder = os.path.join(brats_data_path,'labelTr')
     img_filenames = os.listdir(img_folder)
     lbl_filenames = os.listdir(lbl_folder)
+
+
     image_paths = [os.path.join(img_folder,file_path) for file_path in img_filenames]
     label_paths = [os.path.join(lbl_folder,file_path) for file_path in lbl_filenames]
     cache_dir = config['data']['cache_path']
@@ -235,7 +255,7 @@ def train_unet(config):
     # Create a DataLoader for batching
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
-    device  = torch.device('cpu')
+    device  = torch.device(torch.load(config['training']['device']))
     model = UNet3D(in_channels,out_channels)
     model = model.to(device)
 
@@ -246,7 +266,7 @@ def train_unet(config):
     for epoch in tqdm(range(epochs)):
         model.train()
         running_loss = 0.0
-        for batch, (inputs, labels) in enumerate(dataloader):  # inputs shape: (batch_size, 4, H, W, D), labels shape: (batch_size, H, W, D)
+        for batch, (inputs, labels) in enumerate(dataloader, desc="Training"):  # inputs shape: (batch_size, 4, H, W, D), labels shape: (batch_size, H, W, D)
             optimizer.zero_grad()
             
             outputs = model(inputs)  # outputs shape: (batch_size, num_classes, H, W, D)
@@ -258,8 +278,6 @@ def train_unet(config):
             running_loss += loss.item()
             if verbose:
                 print(f"Batch {batch+1}/{len(dataloader)}, Loss: {loss.item()}")
-            if mlflow_enabled:
-                mlflow.log_metric("train_loss_batch", loss.item(), step=batch)
         if verbose:
             print(f"Epoch {epoch+1}/{epochs}, Loss: {running_loss/len(dataloader)}")
                 # Log metrics to MLflow

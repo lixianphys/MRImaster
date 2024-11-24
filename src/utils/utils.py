@@ -4,16 +4,16 @@ import matplotlib.pyplot as plt
 import itertools
 from torchvision import transforms
 import yaml
+from tqdm import tqdm
 
-labels = ["glioma tumor", "meningioma tumor", "no tumor", "pituitary tumor"]
+
 # Label Mapping
 CLA_label = {
-    0 : labels[0],
-    1 : labels[1],
-    2 : labels[2],
-    3 : labels[3]
+    0 : "glioma tumor",
+    1 : "meningioma tumor",
+    2 : "no tumor",
+    3 : "pituitary tumor"
 } 
-
 
 def load_config_from_yaml(config_path):
     """Load configuration from a YAML file"""
@@ -108,11 +108,11 @@ def loss_epoch(model,device,loss_func,dataset_dl,opt=None):
 
 
 # define function For Classification Report
-def Ture_and_Pred(val_loader, model, device):
-    i = 0
+def True_and_Pred(val_loader, model, device):
+    model.eval()
     y_true = []
     y_pred = []
-    for images, labels in val_loader:
+    for images, labels in tqdm(val_loader):
         images = images.to(device)
         labels = labels.numpy()
         outputs = model(images)
@@ -123,8 +123,6 @@ def Ture_and_Pred(val_loader, model, device):
         y_pred = np.append(y_pred, pred)
     
     return y_true, y_pred
-
-
 
 
 # Confusion Matrix Plotting Function
@@ -148,3 +146,25 @@ def show_confusion_matrix(cm, CLA_label, title='Confusion matrix', cmap=plt.cm.Y
     plt.xlabel('Predicted')
     plt.tight_layout()
     plt.show()
+
+
+def dice_score_per_class(pred, target, num_classes, smooth=1.0):
+    """
+    Compute the Dice score for each class.
+    Args:
+        pred: Predicted class tensor (batch, height, width, depth).
+        target: Ground truth class tensor (batch, height, width, depth).
+        num_classes: Total number of classes.
+        smooth: Smoothing factor to avoid division by zero.
+    Returns:
+        List of Dice scores per class.
+    """
+    dice_scores = []
+    for cls in range(num_classes):
+        pred_bin = (pred == cls).float()
+        target_bin = (target == cls).float()
+        intersection = (pred_bin * target_bin).sum()
+        union = pred_bin.sum() + target_bin.sum()
+        dice = (2.0 * intersection + smooth) / (union + smooth)
+        dice_scores.append(dice.item())
+    return dice_scores

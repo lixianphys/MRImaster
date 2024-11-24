@@ -14,12 +14,11 @@ data/
 *.env
 !e.env
 *.ps1
-brain/
 .ipynb_checkpoints/
 *.pt
-!model_to_deploy.pt
 static/uploads
 mlruns/
 output/
 data/
 frontend/static/uploads
+*.db

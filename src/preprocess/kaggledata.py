@@ -1,9 +1,6 @@
 import kaggle as kg
 from pathlib import Path
 import os
-import matplotlib.pyplot as plt
-import numpy as np
-import plotly.graph_objects as go
 
 
 class KaggleDataPipe(object):

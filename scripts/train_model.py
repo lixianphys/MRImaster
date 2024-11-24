@@ -1,11 +1,7 @@
-""" 
-Build tools for training models.
-"""
 import sys
 import os
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
 sys.path.append(project_root)
-import pandas as pd
 from src.training.train import train_cnn, train_unet
 from src.utils.utils import load_config_from_yaml
 import click

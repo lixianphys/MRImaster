@@ -37,7 +37,7 @@ axes = {
 # Load models once and cache them
 @st.cache_resource
 def load_models(device):
-    cnn_model = load_cnn_model("models/saved_models/model_cnn_best.pt", device, {
+    cnn_model = load_cnn_model("models/cnn_model/cnn_model_trained_by_Testing.pt", device, {
             "shape_in":(3,256,256),
             "num_classes":4,
             "initial_filters":8,
@@ -86,7 +86,7 @@ def main():
         uploaded_volume = st.file_uploader("Upload a 3D Volume (NIfTI format)", type=["nii", "nii.gz"])
         if uploaded_volume is not None:
             # Directly pass the uploaded volume to preprocess_volume
-            volume_path = os.path.join("scripts",uploaded_volume.name)
+            volume_path = os.path.join("data/imageTr",uploaded_volume.name)
 
             volume_tensor = preprocess_volume(volume_path, device)
             predicted_volume = unet3d_inference(unet3d_model, volume_tensor)
