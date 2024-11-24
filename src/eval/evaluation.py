@@ -6,7 +6,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms 
 from torch.utils.data import DataLoader
-from src.utils.utils import (loss_epoch, True_and_Pred, CLA_label,show_confusion_matrix, dice_score_per_class)
+from src.utils.utils import (True_and_Pred, CLA_label,show_confusion_matrix, dice_score_per_class, iou_per_class)
 from src.unet3d import UNet3D
 from src.cnn import CNN_TUMOR
 from sklearn.metrics import (confusion_matrix, classification_report, accuracy_score)
@@ -96,7 +96,7 @@ def eval_unet(config):
     all_y_true = []
     all_y_pred = []
     dice_scores_all = []
-    
+    iou_scores_all = []   
     model.eval()
     with torch.no_grad():
         for inputs, labels in tqdm(dataloader, desc="Evaluating"):
@@ -106,7 +106,9 @@ def eval_unet(config):
             
             # Compute Dice scores
             dice_scores = dice_score_per_class(predictions, labels, num_classes=num_classes)
+            iou_scores = iou_per_class(predictions, labels, num_classes=num_classes)
             dice_scores_all.append(dice_scores)
+            iou_scores_all.append(iou_scores)
 
             # Flatten for classification metrics
             all_y_true.extend(labels.cpu().numpy().flatten())
@@ -114,6 +116,7 @@ def eval_unet(config):
 
     # Average Dice scores per class
     avg_dice_scores = np.mean(dice_scores_all, axis=0)
+    avg_iou_scores = np.mean(iou_scores_all, axis=0)
 
     # Overall metrics
     overall_accuracy = accuracy_score(all_y_true, all_y_pred)
@@ -126,6 +129,9 @@ def eval_unet(config):
         report_file.write("## Dice Scores Per Class\n")
         for cls, dice_score in enumerate(avg_dice_scores):
             report_file.write(f"- Class {cls}: Dice Score = {dice_score:.4f}\n")
+        report_file.write("\n## IoU Scores Per Class\n")
+        for cls, iou_score in enumerate(avg_iou_scores):
+            report_file.write(f"- Class {cls}: IoU Score = {iou_score:.4f}\n")
         report_file.write("\n## Overall Accuracy\n")
         report_file.write(f"- Overall Accuracy: {overall_accuracy:.4f}\n\n")
         report_file.write("## Classification Metrics\n")

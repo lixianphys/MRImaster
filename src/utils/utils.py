@@ -168,3 +168,24 @@ def dice_score_per_class(pred, target, num_classes, smooth=1.0):
         dice = (2.0 * intersection + smooth) / (union + smooth)
         dice_scores.append(dice.item())
     return dice_scores
+
+def iou_per_class(pred, target, num_classes, smooth=1.0):
+    """
+    Compute IoU (Intersection over Union) for each class.
+    Args:
+        pred: Predicted class tensor (batch, height, width, depth).
+        target: Ground truth class tensor (batch, height, width, depth).
+        num_classes: Total number of classes.
+        smooth: Smoothing factor to avoid division by zero.
+    Returns:
+        List of IoU scores per class.
+    """
+    iou_scores = []
+    for cls in range(num_classes):
+        pred_bin = (pred == cls).float()
+        target_bin = (target == cls).float()
+        intersection = (pred_bin * target_bin).sum()
+        union = pred_bin.sum() + target_bin.sum() - intersection
+        iou = (intersection + smooth) / (union + smooth)
+        iou_scores.append(iou.item())
+    return iou_scores
