@@ -10,7 +10,6 @@ __pycache__/
 *.pyzw
 .metaflow/
 wandb/
-data/
 *.env
 !e.env
 *.ps1
@@ -18,8 +17,13 @@ data/
 *.pt
 static/uploads
 mlruns/
+<<<<<<< HEAD
 output/
 data/
 models/
 frontend/static/uploads
 *.db
+=======
+frontend/static/uploads
+dist/
+>>>>>>> published
