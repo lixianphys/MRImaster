@@ -56,11 +56,11 @@ streamlit run app.py
 
 ## For developers
 ### Datasets for training 
-#### Brats dataset - Task01 Brain Tumor (cnn model)
+#### Brats dataset - Task01 Brain Tumor (unet3d model)
 Brats2017 (Gliomas segmentation tumour and oedema in on brain images). "https://www.med.upenn.edu/sbia/brats2017.html"
 This 4D image dataset contains brain MR images together with segmentation masks. All images and masks are provided in `.nii.gz` format with 4 channels (FLAIR,T1w, t1gd and T2w) per image. Masks are categorical with four classes: background, edema, non-enhancing tumor and enhancing tumour.
 
-#### Kaggle dataset - brain-tumor-classification-mri (unet3d model)
+#### Kaggle dataset - brain-tumor-classification-mri (cnn model)
 This dataset contain Training and Testing folders. Each folder has four subfolders, which contain MRIs of respective tumor classes (Glioma, Meningioma, Pituitary and No Tumor) "https://www.kaggle.com/datasets/sartajbhuvaji/brain-tumor-classification-mri"
 
 ### Data Preprocessing
