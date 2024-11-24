@@ -28,7 +28,7 @@ def pred_cnn(config):
     
     # Run inference and print result
     prediction = cnn_inference(model, image_tensor)
-    print(f"CNN Prediction: {CLA_label[prediction]}")
+    print(f"Prediction: {CLA_label[prediction]}")
 
 def pred_unet(config):
         # Load model and preprocess input volume

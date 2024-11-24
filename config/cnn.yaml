@@ -21,19 +21,19 @@ train:
     uri: "http://localhost:5000"
     experiment: "MRI_Classifier"
   batch_size: 64 # default: 64
-  epochs: 50
+  epochs: 3
   learning_rate: 3e-4 # default: 3e-4
   verbose: true
   device: 'cpu'
-  save_path: "models/cnn_model/cnn_model_trained_only_by_Testing.pt"
+  save_path: "models/cnn_model/test.pt"
 
 eval:
   model: "models/saved_models/cnn_model.pt"
   image_size: [256,256]
   batch_size: 64 # default: 64
-  data: "data/raw_data/brain-tumor-classification-mri/Training"
+  data: "data/raw_data/brain-tumor-classification-mri/Testing"
   device: 'cpu'
-  report: "output/report_trainedonlyTesting_cnn_model_data_Training.md"
+  report: "output/test.md"
 
 deploy:
   model: "models/deployed_models/cnn_model.pt"

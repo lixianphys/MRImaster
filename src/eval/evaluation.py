@@ -10,7 +10,7 @@ from src.utils.utils import (True_and_Pred, CLA_label,show_confusion_matrix, dic
 from src.unet3d import UNet3D
 from src.cnn import CNN_TUMOR
 from sklearn.metrics import (confusion_matrix, classification_report, accuracy_score)
-from src.preprocess.nifti import LazyLoadingNiftiDataset
+from src.preprocess.nifti import NormalLoadingNiftiDataset
 import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
@@ -46,7 +46,7 @@ def eval_cnn(config):
     }
     )
 
-    model.load_state_dict(torch.load(config['eval']['model_wts'],weights_only=True))
+    model.load_state_dict(torch.load(config['eval']['model'],weights_only=True))
 
     # check confusion matrix for error analysis
     model.eval()
@@ -68,6 +68,8 @@ def eval_cnn(config):
         md_file.write("## Confusion Matrix\n\n")
         md_file.write(cm_df.to_markdown() + "\n\n")
 
+    print(f"Report saved to {report_path}")
+
 
 def eval_unet(config):
     " Evaluate a Unet3D model"
@@ -84,7 +86,7 @@ def eval_unet(config):
     lbl_filenames = os.listdir(lbl_folder)
     image_paths = [os.path.join(img_folder,file_path) for file_path in img_filenames]
     label_paths = [os.path.join(lbl_folder,file_path) for file_path in lbl_filenames]
-    dataset = LazyLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths)
+    dataset = NormalLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths)
     # Create a DataLoader for batching
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
@@ -122,9 +124,9 @@ def eval_unet(config):
     overall_accuracy = accuracy_score(all_y_true, all_y_pred)
     class_report = classification_report(all_y_true, all_y_pred, output_dict=True)
 
-    output_report_path = config['eval']['report']
+    report_path = config['eval']['report']
     # Save report as Markdown
-    with open(output_report_path, "w") as report_file:
+    with open(report_path, "w") as report_file:
         report_file.write("# Segmentation Evaluation Report\n\n")
         report_file.write("## Dice Scores Per Class\n")
         for cls, dice_score in enumerate(avg_dice_scores):
@@ -142,7 +144,7 @@ def eval_unet(config):
                 report_file.write(f"- Recall: {metrics['recall']:.4f}\n")
                 report_file.write(f"- F1-Score: {metrics['f1-score']:.4f}\n\n")
 
-    print(f"Report saved to {output_report_path}")
+    print(f"Report saved to {report_path}")
 
 
 

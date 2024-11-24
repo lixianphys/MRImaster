@@ -28,8 +28,64 @@ brat_metadata = {
 }
 
 
+class NormalLoadingNiftiDataset(Dataset):
+    def __init__(self, image_paths, label_paths,target_shape=(128, 128, 128), transforms=None):
+        self.image_paths = image_paths
+        self.label_paths = label_paths
+        self.target_shape = target_shape
+        self.transforms = transforms
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def load_image(self, idx):
+        """Load a 4D image and its 3D label if not cached"""
+
+        # Load the NIfTI files and preprocess
+        img_4d = nib.load(self.image_paths[idx]).get_fdata()
+        label_3d = nib.load(self.label_paths[idx]).get_fdata()
+
+        # Intensity normalization for the image
+        img_4d = (img_4d - np.mean(img_4d)) / np.std(img_4d)
+        img_4d = np.clip(img_4d, 0, 1)
+
+        # Ensure label values are within expected range
+        label_3d = np.clip(label_3d, 0, 3)
+
+        return img_4d, label_3d
+
+    def __getitem__(self, idx):
+        # Load data or process
+        img_4d, label_3d = self.load_image(idx)
+
+        # Optionally crop to target shape
+        if self.target_shape:
+            img_4d = self.center_crop(img_4d, self.target_shape)
+            label_3d = self.center_crop(label_3d, self.target_shape)
+
+        # Apply any transformations, if provided
+        if self.transforms:
+            img_4d, label_3d = self.transforms(img_4d, label_3d)
+
+        # Convert to PyTorch tensors
+        img_tensor = torch.tensor(img_4d, dtype=torch.float32).permute(3, 0, 1, 2)  # (C, H, W, D)
+        label_tensor = torch.tensor(label_3d, dtype=torch.long)  # (H, W, D)
+
+        return img_tensor, label_tensor
+
+    def center_crop(self, img, target_shape):
+        """Crop the center of the image to the target shape."""
+        crop_slices = tuple(
+            slice((dim - target) // 2, (dim - target) // 2 + target)
+            for dim, target in zip(img.shape, target_shape)
+        )
+        return img[crop_slices]    
+
+
+
+
 class LazyLoadingNiftiDataset(Dataset):
-    def __init__(self, image_paths, label_paths, cache_dir=None, target_shape=(128, 128, 128), transforms=None):
+    def __init__(self, image_paths, label_paths, cache_dir, target_shape=(128, 128, 128), transforms=None):
         self.image_paths = image_paths
         self.label_paths = label_paths
         self.cache_dir = cache_dir
@@ -69,11 +125,10 @@ class LazyLoadingNiftiDataset(Dataset):
             # Ensure label values are within expected range
             label_3d = np.clip(label_3d, 0, 3)
 
-            if self.cache_dir is not None:
-                # Save the preprocessed image and label to cache
-                np.save(img_cache_path, img_4d)
-                np.save(lbl_cache_path, label_3d)
-                print(f"Cached image and label {idx} to disk.")
+            # Save the preprocessed image and label to cache
+            np.save(img_cache_path, img_4d)
+            np.save(lbl_cache_path, label_3d)
+            print(f"Cached image and label {idx} to disk.")
 
         return img_4d, label_3d
 
