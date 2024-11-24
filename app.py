@@ -10,8 +10,12 @@ from src.inference.predict import (
     preprocess_image, preprocess_volume,
     cnn_inference, unet3d_inference
 )
-from src.utils.utils import CLA_label
+from src.utils.utils import CLA_label, load_config_from_yaml
 from src.cnn import im2gradCAM
+
+
+cnn_config = load_config_from_yaml("config/cnn.yaml")
+unet_config = load_config_from_yaml("config/unet.yaml")
 
 # Define modalities and labels
 modalities = {
@@ -37,14 +41,23 @@ axes = {
 # Load models once and cache them
 @st.cache_resource
 def load_models(device):
-    cnn_model = load_cnn_model("models/cnn_model/cnn_model_trained_by_Testing.pt", device, {
-            "shape_in":(3,256,256),
-            "num_classes":4,
-            "initial_filters":8,
-            "num_fc1":100,
-            "dropout_rate":0.25
-        })
-    unet3d_model = load_unet3d_model("models/saved_models/unet_model.pt", device, in_channels=4, out_channels=4)
+    cnn_model = load_cnn_model(
+        model_path=cnn_config['deploy']['model'], 
+        device = torch.device(cnn_config['deploy']['device']), 
+        params = {
+        "shape_in":tuple(cnn_config['model']['shape_in']),
+        "num_classes":cnn_config['model']['num_classes'],
+        "initial_filters":cnn_config['model']['initial_filters'],
+        "num_fc1":cnn_config['model']['num_fc1'],
+        "dropout_rate":cnn_config['model']['dropout_rate']
+        }
+    )
+    unet3d_model = load_unet3d_model(
+        model_path=unet_config['eval']['model'], 
+        device = torch.device(unet_config['deploy']['device']), 
+        in_channels = unet_config['model']['in_channels'], 
+        out_channels = unet_config['model']['out_channels']
+    )
     return cnn_model, unet3d_model
 
 def main():
