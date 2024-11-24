@@ -11,7 +11,7 @@ data:
 
 training:
   batch_size: 1                 # Batch size (adjust based on available GPU memory)
-  epochs: 20                   # Number of training epochs
+  epochs: 3                  # Number of training epochs
   learning_rate: 0.0001         # Learning rate for the optimizer
   verbose: true
   device: 'cpu'
@@ -21,10 +21,9 @@ evaluation:
   path: "data"
   model_wts: "models/saved_models/unet_model.pt"
   device: 'cpu'
-  report_path: "output/unet.md"
+  report_path: "output/evaluation_report_unet.md"
 
 mlflow:
   enabled: true                 # Enable MLflow logging
   tracking_uri: "http://localhost:5000"  # MLflow server URI
   experiment_name: "3D_UNet_MRI_Segmentation"  # Name of the MLflow experiment
-  log_frequency: 1               # Log metrics every epoch (or a different frequency if desired)

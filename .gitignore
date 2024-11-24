@@ -20,5 +20,6 @@ static/uploads
 mlruns/
 output/
 data/
+models/
 frontend/static/uploads
 *.db

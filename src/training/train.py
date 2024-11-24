@@ -17,7 +17,7 @@ from src.preprocess.nifti import LazyLoadingNiftiDataset
 from torch.utils.data import DataLoader
 from src.unet3d import UNet3D
 from src.cnn import CNN_TUMOR
-from src.utils.utils import get_lr,loss_epoch
+from src.utils.utils import (get_lr,loss_epoch,iou_per_class,dice_score_per_class)
 import copy
 
 
@@ -70,15 +70,15 @@ def train_cnn(config):
     val_set = torchvision.datasets.ImageFolder(data_dir.joinpath("val"), transform=transform)
 
     train_dl = DataLoader(train_set, batch_size = batch_size, shuffle = True, num_workers = 2)
-    val_dl = DataLoader(val_set, batch_size = batch_size, shuffle = True, num_workers = 2)
+    val_dl = DataLoader(val_set, batch_size = batch_size, shuffle = False, num_workers = 2)
     loss_func = nn.NLLLoss(reduction="sum")
     opt = optim.Adam(model.parameters(),lr=learning_rate) 
     lr_scheduler =  ReduceLROnPlateau(
-        optimizer =optim.Adam(model.parameters(),
-        lr=learning_rate),
+        optimizer = opt,
         mode='min',
         factor=0.5,
-        patience=20)
+        patience=10,
+        verbose=True)
     
     if verbose:
         print("\n Training start...")
@@ -253,24 +253,38 @@ def train_unet(config):
     dataset = LazyLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths, cache_dir=cache_dir)
 
     # Create a DataLoader for batching
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-    device  = torch.device(torch.load(config['training']['device']))
+    device  = torch.device(config['training']['device'])
     model = UNet3D(in_channels,out_channels)
     model = model.to(device)
 
     criterion = DiceCrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
+    lr_scheduler =  ReduceLROnPlateau(
+        optimizer = optimizer,
+        mode='min',
+        factor=0.5,
+        patience=10,
+        verbose=True)
+
     # Example training loop
     for epoch in tqdm(range(epochs)):
         model.train()
         running_loss = 0.0
-        for batch, (inputs, labels) in enumerate(dataloader, desc="Training"):  # inputs shape: (batch_size, 4, H, W, D), labels shape: (batch_size, H, W, D)
+        dice_score = [0.0]*out_channels
+        iou_score = [0.0]*out_channels
+        for batch, (inputs, labels) in enumerate(dataloader):  # inputs shape: (batch_size, 4, H, W, D), labels shape: (batch_size, H, W, D)
             optimizer.zero_grad()
             
             outputs = model(inputs)  # outputs shape: (batch_size, num_classes, H, W, D)
             loss = criterion(outputs, labels)  # Compute the combined Dice + Cross-Entropy loss
+            for c in range(out_channels):
+                dice_class = dice_score_per_class(torch.argmax(outputs, dim=1), labels, num_classes=out_channels)
+                dice_score[c] += dice_class[c]
+                iou_class = iou_per_class(torch.argmax(outputs, dim=1), labels, num_classes=out_channels)
+                iou_score[c]  += iou_class[c]
             
             loss.backward()
             optimizer.step()
@@ -278,11 +292,19 @@ def train_unet(config):
             running_loss += loss.item()
             if verbose:
                 print(f"Batch {batch+1}/{len(dataloader)}, Loss: {loss.item()}")
+                
+        # learning rate schedule
+        lr_scheduler.step(running_loss)
         if verbose:
             print(f"Epoch {epoch+1}/{epochs}, Loss: {running_loss/len(dataloader)}")
-                # Log metrics to MLflow
+            print(f"Last Learning Rate is {lr_scheduler.get_last_lr()[0]}")
+        
+        # Log metrics to MLflow
         if mlflow_enabled:
             mlflow.log_metric("train_loss", running_loss/len(dataloader), step=epoch)
+            for c in range(out_channels):
+                mlflow.log_metric(f"iou_score_class{c}",iou_score[c]/len(dataloader), step=epoch)
+                mlflow.log_metric(f"dice_score_class{c}", dice_score[c]/len(dataloader), step=epoch)
         # Log model artifact
     if mlflow_enabled:
         model_save_path = config['model']['save_path']
