@@ -3,27 +3,33 @@ model:
   type : "unet3d"
   in_channels: 4                # Number of input channels (e.g., 1 for grayscale MRI)
   out_channels: 4              # Number of output channels (e.g., 1 for binary segmentation)
-  save_path: "models/unet_model/unet_model.pt"
 
-data:
-  data_path: "data/"     # Path to the training dataset (3D volumes)
-  cache_path: "data/cache_dir"
-
-training:
+train:
+  data:
+    data_path: "data/"     # Path to the training dataset (3D volumes)
+    cache_path: "data/cache_dir"
+  mlflow:
+    enabled: true                 # Enable MLflow logging
+    uri: "http://localhost:5000"  # MLflow server URI
+    experiment: "3D_UNet_MRI_Segmentation"  # Name of the MLflow experiment
   batch_size: 1                 # Batch size (adjust based on available GPU memory)
-  epochs: 3                  # Number of training epochs
+  epochs: 2                  # Number of training epochs
   learning_rate: 0.0001         # Learning rate for the optimizer
   verbose: true
   device: 'cpu'
+  save_path: "models/unet_model/unet_model.pt"
 
-evaluation:
+eval:
+  model: "models/saved_models/unet_model.pt"
   batch_size: 1                
-  path: "data"
-  model_wts: "models/saved_models/unet_model.pt"
+  data: "data"
   device: 'cpu'
-  report_path: "output/evaluation_report_unet.md"
+  report: "output/evaluation_report_unet.md"
 
-mlflow:
-  enabled: true                 # Enable MLflow logging
-  tracking_uri: "http://localhost:5000"  # MLflow server URI
-  experiment_name: "3D_UNet_MRI_Segmentation"  # Name of the MLflow experiment
+deploy:
+  model: "models/deployed_models/unet_model.pt"
+  input: "data/imageTr/BRATS_001.nii.gz"  # Path to the input image
+  device: 'cpu'
+  output: "output/segmented_volume.nii"
+
+

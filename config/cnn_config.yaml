@@ -6,33 +6,37 @@ model:
   initial_filters: 8 # default: 8
   num_fc1: 100  # default: 100
   dropout_rate: 0.25  # default: 0.25
-  save_path: "models/cnn_model/cnn_model_trained_only_by_Testing.pt"
 
-data:
-  dataset_path: "data/raw_data/brain-tumor-classification-mri/Testing"
-  output_path: "data/processed_data/brain-tumor-classification-mri"
-  train_path: "data/processed_data/brain-tumor-classification-mri/train"
-  val_path: "data/processed_data/brain-tumor-classification-mri/val"
-
-loading:
-  train_ratio: 0.8 # default: 0.8 split folders into train and val sets by this ratio
-  image_size: [256,256] # default: [256,256] transform to this image size. 
-
-training:
+train:
+  data:
+    dataset: "data/raw_data/brain-tumor-classification-mri/Testing"
+    output: "data/processed_data/brain-tumor-classification-mri"
+    train: "data/processed_data/brain-tumor-classification-mri/train"
+    val: "data/processed_data/brain-tumor-classification-mri/val"
+  load:
+    train_ratio: 0.8 # default: 0.8 split folders into train and val sets by this ratio
+    image_size: [256,256] # default: [256,256] transform to this image size. 
+  mlflow:
+    enabled: true
+    uri: "http://localhost:5000"
+    experiment: "MRI_Classifier"
   batch_size: 64 # default: 64
   epochs: 50
   learning_rate: 3e-4 # default: 3e-4
   verbose: true
   device: 'cpu'
+  save_path: "models/cnn_model/cnn_model_trained_only_by_Testing.pt"
 
-evaluation:
+eval:
+  model: "models/saved_models/cnn_model.pt"
+  image_size: [256,256]
   batch_size: 64 # default: 64
-  path: "data/raw_data/brain-tumor-classification-mri/Training"
-  model_wts: "models/cnn_model/cnn_model_trained_only_by_Testing.pt"
+  data: "data/raw_data/brain-tumor-classification-mri/Training"
   device: 'cpu'
-  report_path: "output/report_trainedonlyTesting_cnn_model_data_Training.md"
+  report: "output/report_trainedonlyTesting_cnn_model_data_Training.md"
 
-mlflow:
-  enabled: true
-  tracking_uri: "http://localhost:5000"
-  experiment_name: "MRI_Classifier"
+deploy:
+  model: "models/deployed_models/cnn_model.pt"
+  input: "data/processed_data/brain-tumor-classification-mri/train/glioma_tumor/image.jpg"  # Path to the input image
+  device: 'cpu'
+

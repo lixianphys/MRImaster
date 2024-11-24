@@ -29,7 +29,7 @@ brat_metadata = {
 
 
 class LazyLoadingNiftiDataset(Dataset):
-    def __init__(self, image_paths, label_paths, cache_dir, target_shape=(128, 128, 128), transforms=None):
+    def __init__(self, image_paths, label_paths, cache_dir=None, target_shape=(128, 128, 128), transforms=None):
         self.image_paths = image_paths
         self.label_paths = label_paths
         self.cache_dir = cache_dir
@@ -69,10 +69,11 @@ class LazyLoadingNiftiDataset(Dataset):
             # Ensure label values are within expected range
             label_3d = np.clip(label_3d, 0, 3)
 
-            # Save the preprocessed image and label to cache
-            np.save(img_cache_path, img_4d)
-            np.save(lbl_cache_path, label_3d)
-            print(f"Cached image and label {idx} to disk.")
+            if self.cache_dir is not None:
+                # Save the preprocessed image and label to cache
+                np.save(img_cache_path, img_4d)
+                np.save(lbl_cache_path, label_3d)
+                print(f"Cached image and label {idx} to disk.")
 
         return img_4d, label_3d
 

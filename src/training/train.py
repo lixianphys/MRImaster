@@ -29,14 +29,15 @@ def train_cnn(config):
     initial_filters = config['model']['initial_filters']
     num_fc1 = config['model']['num_fc1']
     dropout_rate = config['model']['dropout_rate']
-    image_size = tuple(config['loading']['image_size'])
-    batch_size = config['training']['batch_size']
-    epochs = config['training']['epochs']
-    verbose = config['training']['verbose']
-    learning_rate = float(config['training']['learning_rate'])
-    mlflow_enabled = config['mlflow']['enabled']
-    model_save_path = config['model']['save_path']
-    device=torch.device(config['training']['device'])
+
+    image_size = tuple(config['train']['load']['image_size'])
+    batch_size = config['train']['batch_size']
+    epochs = config['train']['epochs']
+    verbose = config['train']['verbose']
+    learning_rate = float(config['train']['learning_rate'])
+    mlflow_enabled = config['train']['mlflow']['enabled']
+    model_save_path = config['train']['save_path']
+    device=torch.device(config['train']['device'])
 
     model = CNN_TUMOR(
         {
@@ -48,11 +49,11 @@ def train_cnn(config):
     }
     )
     print("Data Augmentation Starts ...")
-    data_dir = pathlib.Path(config['data']['dataset_path'])
-    train_ratio = config['loading']['train_ratio']
-    splitfolders.ratio(data_dir, output=config['data']['output_path'], seed=20, ratio=(train_ratio, 1-train_ratio))
+    data_dir = pathlib.Path(config['train']['data']['dataset'])
+    train_ratio = config['train']['load']['train_ratio']
+    splitfolders.ratio(data_dir, output=config['train']['data']['output'], seed=20, ratio=(train_ratio, 1-train_ratio))
     # new dataset path
-    data_dir = pathlib.Path(config['data']['output_path'])
+    data_dir = pathlib.Path(config['train']['data']['output'])
 
     # define transformation
     transform = transforms.Compose(
@@ -100,8 +101,8 @@ def train_cnn(config):
 
     # MLflow logging setup
     if mlflow_enabled:
-        mlflow.set_tracking_uri(config['mlflow']['tracking_uri'])
-        mlflow.set_experiment(config['mlflow']['experiment_name'])
+        mlflow.set_tracking_uri(config['train']['mlflow']['uri'])
+        mlflow.set_experiment(config['train']['mlflow']['experiment'])
         mlflow.start_run()
         
         # Log model hyperparameters
@@ -172,7 +173,7 @@ def train_cnn(config):
 
     # Log model artifact
     if mlflow_enabled:
-        model_save_path = config['model']['save_path']
+        model_save_path = config['train']['save_path']
         torch.save(model.state_dict(), model_save_path)
         mlflow.log_artifact(model_save_path, artifact_path="models")
         mlflow.end_run()
@@ -216,16 +217,16 @@ def train_unet(config):
     """ Train a 3D Unet model"""
     in_channels=config['model']['in_channels']
     out_channels=config['model']['out_channels']
-    epochs=config['training']['epochs']
-    batch_size = config['training']['batch_size']
-    learning_rate = config['training']['learning_rate']
-    verbose = config['training']['verbose']
-    mlflow_enabled = config['mlflow']['enabled']
+    epochs=config['train']['epochs']
+    batch_size = config['train']['batch_size']
+    learning_rate = config['train']['learning_rate']
+    verbose = config['train']['verbose']
+    mlflow_enabled = config['train']['mlflow']['enabled']
 
     # MLflow logging setup
     if mlflow_enabled:
-        mlflow.set_tracking_uri(config['mlflow']['tracking_uri'])
-        mlflow.set_experiment(config['mlflow']['experiment_name'])
+        mlflow.set_tracking_uri(config['train']['mlflow']['uri'])
+        mlflow.set_experiment(config['train']['mlflow']['experiment'])
         mlflow.start_run()
         
         # Log model hyperparameters
@@ -237,7 +238,7 @@ def train_unet(config):
         mlflow.log_param("out_channels",out_channels)
 
     # Paths to NIfTI images and labels
-    brats_data_path = config['data']['data_path']
+    brats_data_path = config['train']['data']['data_path']
     # place all images (nii or nii.gz) in data_path/imageTr
     img_folder = os.path.join(brats_data_path,'imageTr')
     # place all labels (nii or nii.gz) in data_path/labelTr
@@ -248,14 +249,14 @@ def train_unet(config):
 
     image_paths = [os.path.join(img_folder,file_path) for file_path in img_filenames]
     label_paths = [os.path.join(lbl_folder,file_path) for file_path in lbl_filenames]
-    cache_dir = config['data']['cache_path']
+    cache_dir = config['train']['data']['cache_path']
     # Initialize the dataset with caching
     dataset = LazyLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths, cache_dir=cache_dir)
 
     # Create a DataLoader for batching
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-    device  = torch.device(config['training']['device'])
+    device  = torch.device(config['train']['device'])
     model = UNet3D(in_channels,out_channels)
     model = model.to(device)
 
@@ -307,7 +308,7 @@ def train_unet(config):
                 mlflow.log_metric(f"dice_score_class{c}", dice_score[c]/len(dataloader), step=epoch)
         # Log model artifact
     if mlflow_enabled:
-        model_save_path = config['model']['save_path']
+        model_save_path = config['train']['save_path']
         torch.save(model.state_dict(), model_save_path)
         mlflow.log_artifact(model_save_path, artifact_path="models")
         mlflow.end_run()

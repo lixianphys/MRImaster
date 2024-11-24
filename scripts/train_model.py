@@ -10,21 +10,17 @@ import click
 @click.command()
 @click.option('--model', type=click.Choice(['cnn', 'unet3d']), required=True, help="Model type to train ('cnn' or 'unet')")
 @click.option('--config', type = click.Path(exists=True), required=True, help = "Path to the configuration YAML file")
-@click.option('--data_path', type = click.Path(exists=True), default = '/',help="Path to the training data directory.")
 @click.option('--use_mlflow', is_flag=True, help="Use MLflow for tracking training metrics and parameters.")
-def train_model(model,config,data_path,use_mlflow):
+def train_model(model,config,use_mlflow):
     """
     CLI command to train a model (CNN or UNet).
     """
     # Load configuration
     config = load_config_from_yaml(config)
 
-    # Update data paths in the configuration if provided
-    config['data']['train_path'] = data_path + '/train'
-    config['data']['val_path'] = data_path + '/val'
 
     if use_mlflow:
-        config['mlflow']['enable'] = True
+        config['train']['mlflow']['enabled'] = True
     # Determine which model to train
     if model.lower() == 'cnn':
         click.echo("Training CNN model...")

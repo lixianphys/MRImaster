@@ -19,11 +19,11 @@ import numpy as np
 
 def eval_cnn(config):
     "Evaluate a CNN model"
-    batch_size= config['evaluation']['batch_size']
-    data_path = config['evaluation']['path']
-    image_size = tuple(config['loading']['image_size'])
+    batch_size= config['eval']['batch_size']
+    data_path = config['eval']['data']
+    image_size = tuple(config['eval']['image_size'])
     print(f"Working on dataset at {data_path}")
-    device=torch.device(config['evaluation']['device'])
+    device=torch.device(config['eval']['device'])
     # define transformation
     transform = transforms.Compose(
         [
@@ -34,7 +34,7 @@ def eval_cnn(config):
     )
     val_set = torchvision.datasets.ImageFolder(data_path,transform=transform)
     val_loader = DataLoader(val_set, batch_size = batch_size, shuffle = True, num_workers = 2)
-    report_path = config['evaluation']['report_path']
+    report_path = config['eval']['report']
 
     model = CNN_TUMOR(
     {
@@ -46,7 +46,7 @@ def eval_cnn(config):
     }
     )
 
-    model.load_state_dict(torch.load(config['evaluation']['model_wts'],weights_only=True))
+    model.load_state_dict(torch.load(config['eval']['model_wts'],weights_only=True))
 
     # check confusion matrix for error analysis
     model.eval()
@@ -74,8 +74,9 @@ def eval_unet(config):
     in_channels=config['model']['in_channels']
     out_channels=config['model']['out_channels']
     num_classes = out_channels
-    batch_size= config['evaluation']['batch_size']
-    path = config['evaluation']['path']
+    batch_size= config['eval']['batch_size']
+    path = config['eval']['data']
+    # place all images (nii or nii.gz) in data_path/imageTr
     img_folder = os.path.join(path,'imageTr')
     # place all labels (nii or nii.gz) in data_path/labelTr
     lbl_folder = os.path.join(path,'labelTr')
@@ -83,14 +84,13 @@ def eval_unet(config):
     lbl_filenames = os.listdir(lbl_folder)
     image_paths = [os.path.join(img_folder,file_path) for file_path in img_filenames]
     label_paths = [os.path.join(lbl_folder,file_path) for file_path in lbl_filenames]
-    cache_dir = config['data']['cache_path']
-    dataset = LazyLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths, cache_dir=cache_dir)
+    dataset = LazyLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths)
     # Create a DataLoader for batching
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
-    device  = torch.device(config['evaluation']['device'])
+    device  = torch.device(config['eval']['device'])
     model = UNet3D(in_channels,out_channels)
-    model.load_state_dict(torch.load(config['evaluation']['model_wts'],weights_only=True))
+    model.load_state_dict(torch.load(config['eval']['model'],weights_only=True))
     model.to(device)
 
     all_y_true = []
@@ -122,7 +122,7 @@ def eval_unet(config):
     overall_accuracy = accuracy_score(all_y_true, all_y_pred)
     class_report = classification_report(all_y_true, all_y_pred, output_dict=True)
 
-    output_report_path = config['evaluation']['report_path']
+    output_report_path = config['eval']['report']
     # Save report as Markdown
     with open(output_report_path, "w") as report_file:
         report_file.write("# Segmentation Evaluation Report\n\n")

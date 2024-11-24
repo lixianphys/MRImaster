@@ -6,6 +6,52 @@ from PIL import Image
 from torchvision import transforms
 from src.cnn import CNN_TUMOR # Import the CNN model architecture
 from src.unet3d import UNet3D
+from src.utils.utils import CLA_label
+import matplotlib.pyplot as plt
+
+
+def pred_cnn(config):
+    model = load_cnn_model(
+        model_path=config['deploy']['model'], 
+        device = torch.device(config['deploy']['device']), 
+        params = {
+        "shape_in":tuple(config['model']['shape_in']),
+        "num_classes":config['model']['num_classes'],
+        "initial_filters":config['model']['initial_filters'],
+        "num_fc1":config['model']['num_fc1'],
+        "dropout_rate":config['model']['dropout_rate']
+        }
+    )
+    image_tensor = preprocess_image(
+        config['deploy']['input'], 
+        torch.device(config['deploy']['device']))
+    
+    # Run inference and print result
+    prediction = cnn_inference(model, image_tensor)
+    print(f"CNN Prediction: {CLA_label[prediction]}")
+
+def pred_unet(config):
+        # Load model and preprocess input volume
+    model = load_unet3d_model(
+        model_path=config['eval']['model'], 
+        device = torch.device(config['deploy']['device']), 
+        in_channels = config['model']['in_channels'], 
+        out_channels = config['model']['out_channels']
+    )
+    volume_tensor = preprocess_volume(
+        volume = config['deploy']['input'], 
+        device = torch.device(config['deploy']['device']))
+    
+    # Run inference and save result
+    prediction_volume = unet3d_inference(model, volume_tensor).astype(np.float32) # Nift1Image only accepts int16 or float32
+    output_path = config['deploy']['output']
+    
+    predicted_volume_nifti = nib.Nifti1Image(prediction_volume, affine=np.eye(4),dtype=np.int64)
+    nib.save(predicted_volume_nifti, output_path)
+    print(f"UNet3D Prediction saved to {output_path}")
+
+    visualize_unet3d_prediction(volume_tensor,prediction_volume)
+
 
 def load_cnn_model(model_path, device, params):
     model = CNN_TUMOR(params).to(device)
@@ -65,9 +111,6 @@ def unet3d_inference(model, volume_tensor):
 
 
 def visualize_unet3d_prediction(inputs,pred_labels):
-
-    import matplotlib.pyplot as plt
-
     slice_index = inputs.shape[2] // 3  # Choose a middle slice index in the depth dimension
     print(f"slice_index = {slice_index}")
     # Visualize side-by-side

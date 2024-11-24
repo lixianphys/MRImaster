@@ -9,16 +9,13 @@ import click
 @click.command()
 @click.option('--model', type=click.Choice(['cnn', 'unet3d']), required=True, help="Model type to train ('cnn' or 'unet3d')")
 @click.option('--config', type = click.Path(exists=True), required=True, help = "Path to the configuration YAML file")
-@click.option('--data_path', type = click.Path(exists=True), default = '/',help="Path to the evaluation data directory.")
-def eval_model(model,config,data_path):
+
+def eval_model(model,config):
     """
     CLI command to evaluate a model (CNN or UNet).
     """
     # Load configuration
     config = load_config_from_yaml(config)
-
-    # Update evaluation data paths in the configuration if provided
-    config['evaluation']['data_path'] = data_path
 
     # Determine which model to train
     if model.lower() == 'cnn':
