@@ -222,6 +222,10 @@ def train_unet(config):
     learning_rate = config['train']['learning_rate']
     verbose = config['train']['verbose']
     mlflow_enabled = config['train']['mlflow']['enabled']
+    image_folder = config['train']['data']['image_folder']
+    label_folder = config['train']['data']['label_folder']
+
+
 
     # MLflow logging setup
     if mlflow_enabled:
@@ -239,10 +243,10 @@ def train_unet(config):
 
     # Paths to NIfTI images and labels
     brats_data_path = config['train']['data']['data_path']
-    # place all images (nii or nii.gz) in data_path/imageTr
-    img_folder = os.path.join(brats_data_path,'imageTr')
-    # place all labels (nii or nii.gz) in data_path/labelTr
-    lbl_folder = os.path.join(brats_data_path,'labelTr')
+    # place all images (nii or nii.gz) in data_path/image_folder
+    img_folder = os.path.join(brats_data_path,image_folder)
+    # place all labels (nii or nii.gz) in data_path/label_folder
+    lbl_folder = os.path.join(brats_data_path,label_folder)
     img_filenames = os.listdir(img_folder)
     lbl_filenames = os.listdir(lbl_folder)
 
