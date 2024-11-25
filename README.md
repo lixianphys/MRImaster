@@ -5,7 +5,7 @@
 
 [Take a look at the app](#Take-a-look-at-the-app)
 
-[Datasets for training](#Datasets-for-training)
+[Datasets](#Datasets)
 
 [Data Preprocessing](#Data-Preprocessing)
 
@@ -13,7 +13,13 @@
 
 [Train](#Train)
 
-[Deploy](#Deploy)
+[Evaluate](#Evaluate)
+
+[Inference](#Inference)
+
+[Configuration](#Configuration)
+
+[Disclaimer](#disclaimer)
 
 [Features to add](#features-to-add)
 
@@ -30,7 +36,8 @@ git checkout published
 mkdir models
 ```
 **Download model weights**
-https://drive.google.com/drive/folders/1jq7sQmRFvcLYLx71oBgekZpstMblgdH_?usp=drive_link
+[dployed_models/cnn_model.pt+unet_model.pt](
+https://drive.google.com/drive/folders/1jq7sQmRFvcLYLx71oBgekZpstMblgdH_?usp=drive_link)
 
 Place this `deployed_models` under `models`
 
@@ -46,25 +53,27 @@ streamlit run app.py
 ```
 
 ### Take a look at the app
-#### cnn model (Prediction+Grad-CAM)
+**cnn model (Prediction+Grad-CAM)**
 | ![Image 1](frontend/static/app-description/2d-image-upload.png) | ![Image 2](frontend/static/app-description/2d-image-result.png) |
 |-------------------------|------------------------|
-#### unet3d model (Slice,Modality,Segmentation)
+
+**unet3d model (Slice,Modality,Segmentation)**
 | ![Image 1](frontend/static/app-description/3d-volume-upload.png) | ![Image 2](frontend/static/app-description/3d-volume-result.png) |
 |-------------------------|------------------------|
 
 
+---
 ## For developers
-### Datasets for training 
-#### Brats dataset - Task01 Brain Tumor (unet3d model)
+### Datasets 
+**Brats dataset - Task01 Brain Tumor (unet3d model)**
 Brats2017 (Gliomas segmentation tumour and oedema in on brain images). "https://www.med.upenn.edu/sbia/brats2017.html"
 This 4D image dataset contains brain MR images together with segmentation masks. All images and masks are provided in `.nii.gz` format with 4 channels (FLAIR,T1w, t1gd and T2w) per image. Masks are categorical with four classes: background, edema, non-enhancing tumor and enhancing tumour.
 
-#### Kaggle dataset - brain-tumor-classification-mri (cnn model)
+**Kaggle dataset - brain-tumor-classification-mri (cnn model)**
 This dataset contain Training and Testing folders. Each folder has four subfolders, which contain MRIs of respective tumor classes (Glioma, Meningioma, Pituitary and No Tumor) "https://www.kaggle.com/datasets/sartajbhuvaji/brain-tumor-classification-mri"
 
 ### Data Preprocessing
-It is rather straightforward to download medium-sized, well-structured Kaggle dataset by using `src.preprocess.kaggledata.KaggleDataPipe`. While dealing with a large volume of `nii.gz` or `nii` files (a single file can exceed 100 Mb), we need to worry about how to reduce the loading time during training. For this consideration, please have a look at the design of `src.preprocess.nifti.LazyLoadingNiftiDataset` about caching and reloading.
+It is rather straightforward to download medium-sized, well-structured Kaggle dataset by using `src.preprocess.kaggledata.KaggleDataPipe`. While dealing with a large volume of `nii.gz` or `nii` files (a single file can exceed 100 Mb), it is worth considering about reducing the loading time during each epoch of training. For this consideration, please have a look at the design of `src.preprocess.nifti.LazyLoadingNiftiDataset` about caching and reloading. Differently, for evaluation and inference, this caching mechanism will slow down the process, we simply turn to a normal loading process encapsulated in `src.preprocess.nifti.NormalLoadingNiftiDataset`.
 
 ### Model
 For adapting models to more specific uses, some model hyperparameters, such as number of classes, can be modified directly at the `model` block in config files `config/cnn.yaml` and `config/unet.yaml`. Below are the default models for each type:
@@ -84,26 +93,25 @@ mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./
 ```
 
 ### Evaluate
-Edit the `eval` block in config files.
+Evaluate the trained model with a fresh (not seen by the model yet) dataset can quickly provide a good feeling about how good the model can perform in real-world settings. After evaluation, a report in `.md` format will be generated, summarizing the performance (Confusion Matrix, Classification Report, IOU score and Dice score, etc.). Edit the `eval` block in config files.
 ```
 python scripts/eval_model.py --model [cnn or unet3d] --config [path_to_config_file]
 ```
 
 ### Inference
 Edit the `deploy` block in config files.
-Likewise, convienient inference directly from command-line is also offered:
 ```
 python scripts/pred_model.py --model_type [cnn or unet3d] --config [path_to_config_file]
 ```
 
-For the cnn model, the prediction result is directly displayed. While the unet3d model would output a mask of predicted labels to the `output`, which should be modified accordingly.
+For the cnn model, the prediction result is directly displayed. While the unet3d model would output a mask of predicted labels to the path specified by `['deploy']['output']`.
 
 In the previous single-modal version (`app_v0.py`), Fastapi framework is used to deploy inference locally. Here we adopt the Streamlit to deploy this multi-modal inference (`app.py`), configured by the `deploy` block. For more details about this app. Jump [here](#for-users) 
 
-### A typical configuration file
-
+### Configuration
+We write configuration files in YAML format that contains blocks and subblocks. It is recommended to create a config file for each individual model and place these files under the `config` folder.
 ```yaml
-model:
+model: # This block contains type and hyperparameters of the model.
   type: "cnn"
   shape_in: [3,256,256]  # default: [3,256,256]  
   num_classes: 4  # default: 4
@@ -111,7 +119,7 @@ model:
   num_fc1: 100  # default: 100
   dropout_rate: 0.25  # default: 0.25
 
-train:
+train: # This block contains all settings relevant to the training process, from data loading and preprocessing to the actual training.  
   data:
     dataset: "data/"
     output: "data/"
@@ -120,7 +128,7 @@ train:
   load:
     train_ratio: 0.8 # default: 0.8 split folders into train and val sets by this ratio
     image_size: [256,256] # default: [256,256] transform to this image size. 
-  mlflow:
+  mlflow: # setting up the MLflow experiment
     enabled: true
     uri: "http://localhost:5000"
     experiment: "MRI_Classifier"
@@ -131,7 +139,7 @@ train:
   device: 'cpu'
   save_path: "models/cnn_model/test.pt"
 
-eval:
+eval: # This block describes the evaluation process, from model choice, dataloader to metrics report output.
   model: "models/saved_models/cnn_model.pt"
   image_size: [256,256]
   batch_size: 64 # default: 64
@@ -139,12 +147,12 @@ eval:
   device: 'cpu'
   report: "output/test.md"
 
-deploy:
+deploy: # This block describes the deployement (input and output). The setting will be deployed for app.py as well.
   model: "models/deployed_models/cnn_model.pt"
   input: "data/processed_data/brain-tumor-classification-mri/train/glioma_tumor/image.jpg"  # Path to the input image
   device: 'cpu'
 ```
-This configuration file should contain four blocks: `model`, `train`, `eval` and `deploy`.
+This configuration file should contain four blocks: `model`, `train`, `eval` and `deploy` for the entire AI-model pipeline.
 
 ### Disclaimer
 This dataset contains medical images intended solely for research, educational, and informational purposes.
@@ -153,3 +161,10 @@ This dataset contains medical images intended solely for research, educational, 
 - [x] Enable switching between models for different classification tasks
 - [x] Build data pipeline for additional datasets beyond Kaggle, e.g., [TCIA API](https://wiki.cancerimagingarchive.net/display/Public/TCIA+Programmatic+Interface+REST+API+Guides)
 - [x] Add object detection for identifying and measuring tumor size
+- [ ] CNN model inference for a folder of 2D images
+- [ ] UNet3D model inference for a folder of nii or nii.gz images
+- [ ] Generalize UNet3D into UNet with a `dim` parameter to switch to 1D, 2D model.
+- [ ] Provide options to add validation during each epoch for UNet model.
+- [ ] Better saving and loading model checkpoints. Check out monai.engines.SupervisedTrainer and monai.handlers.
+- [ ] Deterministic training support
+- [ ] Integrate UNETR model for 3D segmentation.
