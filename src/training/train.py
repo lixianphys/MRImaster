@@ -258,7 +258,7 @@ def train_unet(config):
     dataset = LazyLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths, cache_dir=cache_dir)
 
     # Create a DataLoader for batching
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=1)
 
     device  = torch.device(config['train']['device'])
     model = UNet3D(in_channels,out_channels)
