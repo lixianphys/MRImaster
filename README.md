@@ -1,35 +1,36 @@
-## MRIMaster: AI-supported medical imaging classifier and segmenter
+## MRIMaster: AI-powered medical imaging classifier and segmenter
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ### Table of Contents
+<!-- Buttons -->
+<p>
+  <a href="#for-app-users" style="text-decoration: none;">
+    <button style="background-color: #b6e2d3; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">For App Users</button>
+  </a>
 
-[How to run the app](#How-to-run-the-app)
+[How to run the app](#how-to-run-the-app)
+[Take a look at the app](#take-a-look-at-the-app)
 
-[Take a look at the app](#Take-a-look-at-the-app)
+  <a href="#for-developers" style="text-decoration: none;">
+    <button style="background-color: #ffa384; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">For Developers</button>
+  </a>
+</p>
 
-[Datasets](#Datasets)
-
-[Data Preprocessing](#Data-Preprocessing)
-
-[Model](#Model)
-
-[Train](#Train)
-
-[Evaluate](#Evaluate)
-
-[Inference](#Inference)
-
-[Configuration](#Configuration)
-
+[Datasets](#datasets)
+[Data Preprocessing](#data-preprocessing)
+[Model](#model)
+[Training](#training)
+[Validation](#validation)
+[Inference](#inference)
+[Configuration](#configuration)
 [Disclaimer](#disclaimer)
-
 [Features to add](#features-to-add)
 
-## For Users
+## For App Users
 
 ### How to run the app
 
-![Github](https://img.shields.io/badge/github-000000?logo=github)
-**Clone this repo**
+**Clone this repo** 
+
 ```cmd
 git clone git@github.com:lixianphys/MRImaster.git
 cd mrimaster
@@ -37,18 +38,18 @@ git checkout published
 mkdir models
 ```
 **Download model weights**
-[dployed_models/cnn_model.pt+unet_model.pt](
+[deployed_models/cnn_model.pt+unet_model.pt](
 https://drive.google.com/drive/folders/1jq7sQmRFvcLYLx71oBgekZpstMblgdH_?usp=drive_link)
 
 Place this `deployed_models` under `models`
 
-**Setup Environment**
+**Setup Environment (Linux or WSL)**
 ```cmd
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
-**Run the App**
+**Launch the App**
 ```cmd
 streamlit run app.py
 ```
@@ -71,7 +72,7 @@ streamlit run app.py
 This 4D image dataset contains brain MR images together with segmentation masks. All images and masks are provided in `.nii.gz` format with 4 channels (FLAIR,T1w, t1gd and T2w) per image. Masks are categorical with four classes: background, edema, non-enhancing tumor and enhancing tumour.
 
 **Kaggle dataset - brain-tumor-classification-mri (cnn model)**
-[This brain-tumor-classification-mri dataset]("https://www.kaggle.com/datasets/sartajbhuvaji/brain-tumor-classification-mri") contain Training and Testing folders. Each folder has four subfolders, which contain MRIs of respective tumor classes (Glioma, Meningioma, Pituitary and No Tumor).
+[This brain-tumor-classification-mri dataset]("https://www.kaggle.com/datasets/sartajbhuvaji/brain-tumor-classification-mri") contains Training and Testing folders. Each folder has four subfolders, which contain MRIs of respective tumor classes (Glioma, Meningioma, Pituitary and No Tumor).
 
 ### Data Preprocessing
 It is rather straightforward to download medium-sized, well-structured Kaggle dataset by using `src.preprocess.kaggledata.KaggleDataPipe`. While dealing with a large volume of `nii.gz` or `nii` files (a single file can exceed 100 Mb), it is worth considering about reducing the loading time during each epoch of training. For this consideration, please have a look at the design of `src.preprocess.nifti.LazyLoadingNiftiDataset` about caching and reloading. Differently, for evaluation and inference, this caching mechanism will slow down the process, we simply turn to a normal loading process encapsulated in `src.preprocess.nifti.NormalLoadingNiftiDataset`.
@@ -88,7 +89,7 @@ python scripts/train_model.py --model [cnn or unet3d] --config [path_to_config_f
 ```
 This command-line together with the config files for training different models (`cnng.yaml` and `unet.ymal`) provides a easy-to-go and flexible access to training your model. 
 
-Additionally, adding `--use_mlflow` will definitely log the experiment, parameters, metrics and artifacts into a MLflow server. Be sure that you have already spinned up one like this: 
+Additionally, adding `--use_mlflow` ensures logging the experiment, parameters, metrics and artifacts into a MLflow server. Make sure that you have already spinned up one like this: 
 ```
 mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns --host 0.0.0.0 --port 5000
 ```
@@ -171,7 +172,7 @@ This dataset contains medical images intended solely for research, educational, 
 - [ ] Deterministic training support
 - [ ] Integrate UNETR model for 3D segmentation.
 - [ ] Option to remove background(case 0) in UNet training when the background class may dominate the calculation and lead the network to optimise by just ignoring small segmentation classes.
-- [ ] Logging 
+- [ ] Logging module
 
 ## License
 
