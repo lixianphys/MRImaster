@@ -3,8 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import itertools
 from torchvision import transforms
-import yaml
 from tqdm import tqdm
+from pathlib import Path
+import shutil
+import os
 
 
 # Label Mapping
@@ -13,20 +15,61 @@ CLA_label = {
     1 : "meningioma tumor",
     2 : "no tumor",
     3 : "pituitary tumor"
-} 
+}
 
-def load_config_from_yaml(config_path):
-    """Load configuration from a YAML file"""
-    with open(config_path, 'r') as file:
-        config = yaml.safe_load(file)
-    return config
+def check_and_prepare_file_path(file_path:str) -> str:
+    """
+    Check if the directory for a given .pt file exists.
+    If the directory doesn't exist, create it.
+
+    Args:
+        file_path (str): The full path to the .pt file.
+    """
+    # Convert the file path to a Path object
+    file_path = Path(file_path)
+    
+    # Extract the directory
+    directory = file_path.parent
+    
+    # Check if the directory exists
+    if not directory.exists():
+        # Create the directory
+        directory.mkdir(parents=True, exist_ok=True)
+        
+    return file_path
+
+def delete_folder_with_confirmation(folder_path: str) -> None:
+    """
+    Deletes a folder and all its contents with user confirmation.
+
+    Args:
+        folder_path (str): Path to the folder to delete.
+    """
+    # Check if the folder exists
+    if not os.path.exists(folder_path):
+        print(f"Folder '{folder_path}' does not exist.")
+        return
+
+    # Ask for user confirmation
+    confirmation = input(f"Are you sure you want to permanently delete the folder '{folder_path}' and all its contents? (yes/no): ").strip().lower()
+    
+    if confirmation == "yes":
+        try:
+            shutil.rmtree(folder_path)
+            print(f"Folder '{folder_path}' and its contents have been deleted.")
+        except PermissionError:
+            print(f"Permission denied: Unable to delete '{folder_path}'.")
+        except Exception as e:
+            print(f"An error occurred while deleting the folder: {e}")
+    else:
+        print("Deletion cancelled.")
+
 
 
 def script_path(filename):
     """
     A convenience function to get the absolute path to a file in this
-    tutorial's directory. This allows the tutorial to be launched from any
-    directory.
+    tutorial's directory. This allows the tutorial to be launched from any directory.
 
     """
     import os
@@ -189,3 +232,11 @@ def iou_per_class(pred, target, num_classes, smooth=1.0):
         iou = (intersection + smooth) / (union + smooth)
         iou_scores.append(iou.item())
     return iou_scores
+
+
+if __name__ == "__main__":
+    print(f"run your quick test here for all functions/classes in this script {__file__}.")
+    print("-----------------------------------------------------------")
+    count_calls = Counter()
+    for i in range(5):
+        print(count_calls())

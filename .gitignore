@@ -17,13 +17,9 @@ wandb/
 *.pt
 static/uploads
 mlruns/
-<<<<<<< HEAD
 output/
 data/
-models/
+checkpoints/
 frontend/static/uploads
 *.db
-=======
-frontend/static/uploads
-dist/
->>>>>>> published
+*.ipynb

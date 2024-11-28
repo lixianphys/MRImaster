@@ -10,7 +10,6 @@ train:
     cache_path: "data/cache_dir"
     image_folder: "imageTr"
     label_folder: "labelTr"
-
   mlflow:
     enabled: true                 # Enable MLflow logging
     uri: "http://localhost:5000"  # MLflow server URI
@@ -19,18 +18,20 @@ train:
   epochs: 20                 # Number of training epochs
   learning_rate: 0.0001         # Learning rate for the optimizer
   verbose: true
+  celoss_ratio: 1 # value falls between 0 and 1
   device: 'cpu'
-  save_path: "models/unet_model/unet_20nii_20epoch.pt"
+  save_path: "checkpoints/unet_model"
+  checkpoint_name: "test.pt"
 
 eval:
-  model: "models/saved_models/unet_model.pt"
+  model: "checkpoints/saved_models/unet_model.pt"
   batch_size: 1                
   data: "data"
   device: 'cpu'
   report: "output/evaluation_report_unet.md"
 
 deploy:
-  model: "models/deployed_models/unet_model.pt"
+  model: "checkpoints/deployed_models/unet_model.pt"
   input: "data/imageTr/BRATS_001.nii.gz"  # Path to the input image
   device: 'cpu'
   output: "output/segmented_volume.nii"

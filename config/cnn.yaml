@@ -1,42 +1,45 @@
 # cnn_config.yaml
 model:
   type: "cnn"
-  shape_in: [3,256,256]  # default: [3,256,256]  
+  shape_in: (3,256,256)  # default: [C=3,W=256,H=256]  
   num_classes: 4  # default: 4
-  initial_filters: 8 # default: 8
+  initial_filters: 4 # default: 8
   num_fc1: 100  # default: 100
-  dropout_rate: 0.25  # default: 0.25
+  dropout_rate: 0  # default: 0.25
 
 train:
+  skip_loading: true # set true if you want to use the existing data in output folder.
   data:
-    dataset: "data/raw_data/brain-tumor-classification-mri/Testing"
-    output: "data/processed_data/brain-tumor-classification-mri"
-    train: "data/processed_data/brain-tumor-classification-mri/train"
-    val: "data/processed_data/brain-tumor-classification-mri/val"
-  load:
+    dataset: "data/raw_data/brain-tumor-classification-mri/Testing" # raw data
+    # !! if skip_loading == False, run this training WILL DELETE THIS 'output' DIRECTORY TO REMOVE DATA FROM PREVIOUS TRAINING WITH YOUR PERMISSION.
+    output: "data/processed_data/brain-tumor-classification-mri" 
+    train_set: "train" # path to train_set: output/train_set 
+    val_set: "val" # path to val_set: output/valset
+  load: # if skip_loading == True, this subblock is ignored.
     train_ratio: 0.8 # default: 0.8 split folders into train and val sets by this ratio
-    image_size: [256,256] # default: [256,256] transform to this image size. 
+    image_size: (256,256) # default: [H=256,W=256] transform to this image size. 
   mlflow:
     enabled: true
     uri: "http://localhost:5000"
-    experiment: "MRI_Classifier"
+    experiment: "fineTuneCNN"
   batch_size: 64 # default: 64
   epochs: 3
   learning_rate: 3e-4 # default: 3e-4
   verbose: true
-  device: 'cpu'
-  save_path: "models/cnn_model/test.pt"
+  device: 'cpu' # most commonly “cpu” or “cuda”, but also potentially “mps”, “xpu”, “xla” or “meta”.
+  save_path: "checkpoints/cnn_model/tunecnn"
+  checkpoint_name: "#"
 
 eval:
-  model: "models/saved_models/cnn_model.pt"
-  image_size: [256,256]
+  model: "checkpoints/saved_models/cnn_model.pt"
+  image_size: (256,256)
   batch_size: 64 # default: 64
   data: "data/raw_data/brain-tumor-classification-mri/Testing"
   device: 'cpu'
   report: "output/test.md"
 
 deploy:
-  model: "models/deployed_models/cnn_model.pt"
+  model: "checkpoints/deployed_models/cnn_model.pt"
   input: "data/processed_data/brain-tumor-classification-mri/train/glioma_tumor/image.jpg"  # Path to the input image
   device: 'cpu'
 

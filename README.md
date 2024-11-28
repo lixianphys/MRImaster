@@ -77,6 +77,23 @@ This 4D image dataset contains brain MR images together with segmentation masks.
 ### Data Preprocessing
 It is rather straightforward to download medium-sized, well-structured Kaggle dataset by using `src.preprocess.kaggledata.KaggleDataPipe`. While dealing with a large volume of `nii.gz` or `nii` files (a single file can exceed 100 Mb), it is worth considering about reducing the loading time during each epoch of training. For this consideration, please have a look at the design of `src.preprocess.nifti.LazyLoadingNiftiDataset` about caching and reloading. Differently, for evaluation and inference, this caching mechanism will slow down the process, we simply turn to a normal loading process encapsulated in `src.preprocess.nifti.NormalLoadingNiftiDataset`.
 
+### Load Kaggle Datasets
+configure your Kaggle API credentials in `.env` 
+```shell
+# Kaggle Information
+KAGGLE_USERNAME = ''
+KAGGLE_KEY = ''
+```
+or set the environment variables with `export KAGGLE_USERNAME=XXX`, then run 
+```shell
+python3 scripts/load_cnn_data.py
+```
+If everything goes well, you will see:
+```shell
+Authentication to Kaggle successful!
+Dataset URL: https://www.kaggle.com/datasets/sartajbhuvaji/brain-tumor-classification-mri
+File download successful!
+```
 ### Model
 For adapting models to more specific uses, some model hyperparameters, such as number of classes, can be modified directly at the `model` block in config files `config/cnn.yaml` and `config/unet.yaml`. Below are the default models for each type:
 - **cnn model**: 4 layers of convoluational neural network for classification task. Input is in shape of (C=3, H=256, W=256). Output is the prediction of 4 classes.
@@ -93,6 +110,23 @@ Additionally, adding `--use_mlflow` ensures logging the experiment, parameters, 
 ```
 mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns --host 0.0.0.0 --port 5000
 ```
+### Batch Training via List in YAML file
+```yaml
+model: # This block contains type and hyperparameters of the model.
+  type: "cnn"
+  shape_in: (3,256,256)  # default: [3,256,256]  
+  num_classes: 4  # default: 4
+  initial_filters: [8,16,32] # default: 8
+  num_fc1: 100  # default: 100
+  dropout_rate: 0.25  # default: 0.25
+
+train:
+  load:
+    train_ratio: [0.7,0.8]
+    save_path: "checkpoints/cnn_model/tunecnn"
+    checkpoint_name: "#"
+```
+This YAML file will generate $3\times 2$ combinations of `[8,16,32]` and `[0.7,0.8]`. To save the checkpoint for each combination, use `#` for `checkpoint_name`. Otherwise, fill `<checkpoint_name>.pt`.
 
 ### Validation
 Evaluate the trained model with a fresh (not seen by the model yet) dataset can quickly provide a good feeling about how good the model can perform in real-world settings. After evaluation, a report in `.md` format will be generated, summarizing the performance (Confusion Matrix, Classification Report, IOU score and Dice score, etc.). Edit the `eval` block in config files.
@@ -113,44 +147,48 @@ In the previous single-modal version (`app_v0.py`), Fastapi framework is used to
 ### Configuration
 The configuration file is written in YAML format that contains blocks and subblocks. It is recommended to create a config file for each individual model and place these files under the `config` folder.
 ```yaml
-model: # This block contains type and hyperparameters of the model.
+# cnn_config.yaml
+model:
   type: "cnn"
-  shape_in: [3,256,256]  # default: [3,256,256]  
+  shape_in: (3,256,256)  # default: [C=3,W=256,H=256]  
   num_classes: 4  # default: 4
-  initial_filters: 8 # default: 8
+  initial_filters: 4 # default: 8
   num_fc1: 100  # default: 100
-  dropout_rate: 0.25  # default: 0.25
+  dropout_rate: 0  # default: 0.25
 
-train: # This block contains all settings relevant to the training process, from data loading and preprocessing to the actual training.  
+train:
+  skip_loading: true # set true if you want to use the existing data in output folder.
   data:
-    dataset: "data/"
-    output: "data/"
-    train: "data/train"
-    val: "data/val"
-  load:
+    dataset: "data/raw_data/brain-tumor-classification-mri/Testing" # raw data
+    # !! if skip_loading == False, run this training WILL DELETE THIS 'output' DIRECTORY TO REMOVE DATA FROM PREVIOUS TRAINING WITH YOUR PERMISSION.
+    output: "data/processed_data/brain-tumor-classification-mri" 
+    train_set: "train" # path to train_set: output/train_set 
+    val_set: "val" # path to val_set: output/valset
+  load: # if skip_loading == True, this subblock is ignored.
     train_ratio: 0.8 # default: 0.8 split folders into train and val sets by this ratio
-    image_size: [256,256] # default: [256,256] transform to this image size. 
-  mlflow: # setting up the MLflow experiment
+    image_size: (256,256) # default: [H=256,W=256] transform to this image size. 
+  mlflow:
     enabled: true
     uri: "http://localhost:5000"
-    experiment: "MRI_Classifier"
+    experiment: "fineTuneCNN"
   batch_size: 64 # default: 64
   epochs: 3
   learning_rate: 3e-4 # default: 3e-4
   verbose: true
-  device: 'cpu'
-  save_path: "models/cnn_model/test.pt"
+  device: 'cpu' # most commonly “cpu” or “cuda”, but also potentially “mps”, “xpu”, “xla” or “meta”.
+  save_path: "checkpoints/cnn_model/tunecnn"
+  checkpoint_name: "checkpoint.pt"
 
-eval: # This block describes the evaluation process, from model choice, dataloader to metrics report output.
-  model: "models/saved_models/cnn_model.pt"
-  image_size: [256,256]
+eval:
+  model: "checkpoints/saved_models/cnn_model.pt"
+  image_size: (256,256)
   batch_size: 64 # default: 64
   data: "data/raw_data/brain-tumor-classification-mri/Testing"
   device: 'cpu'
   report: "output/test.md"
 
-deploy: # This block describes the deployement (input and output). The setting will be deployed for app.py as well.
-  model: "models/deployed_models/cnn_model.pt"
+deploy:
+  model: "checkpoints/deployed_models/cnn_model.pt"
   input: "data/processed_data/brain-tumor-classification-mri/train/glioma_tumor/image.jpg"  # Path to the input image
   device: 'cpu'
 ```
