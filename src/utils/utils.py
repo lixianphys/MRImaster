@@ -151,7 +151,7 @@ def loss_epoch(model,device,loss_func,dataset_dl,opt=None):
     run_loss=0.0 
     t_metric=0.0
     len_data=len(dataset_dl.dataset)
-
+    model = model.to(device)
     # internal loop over dataset
     for xb, yb in dataset_dl:
         # move batch to device
@@ -177,6 +177,7 @@ def True_and_Pred(val_loader, model, device):
     y_pred = []
     for images, labels in tqdm(val_loader):
         images = images.to(device)
+        model = model.to(device)
         labels = labels.numpy()
         outputs = model(images)
         _, pred = torch.max(outputs.data, 1)
