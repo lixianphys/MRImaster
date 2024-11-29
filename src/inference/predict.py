@@ -1,13 +1,17 @@
 # predict_functions.py
-import torch
+import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
 from PIL import Image
+
+import torch
 from torchvision import transforms
+
 from src.cnn import CNN_TUMOR # Import the CNN model architecture
 from src.unet3d import UNet3D
 from src.utils.utils import CLA_label
-import matplotlib.pyplot as plt
+from src.utils.configYaml import string_tuple_to_tuple
+
 
 
 def pred_cnn(config):
@@ -15,7 +19,7 @@ def pred_cnn(config):
         model_path=config['deploy']['model'], 
         device = torch.device(config['deploy']['device']), 
         params = {
-        "shape_in":tuple(config['model']['shape_in']),
+        "shape_in":string_tuple_to_tuple(config['model']['shape_in']),
         "num_classes":config['model']['num_classes'],
         "initial_filters":config['model']['initial_filters'],
         "num_fc1":config['model']['num_fc1'],

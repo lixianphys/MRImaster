@@ -179,6 +179,11 @@ def get_full_lowest_level_keys(data, keys,sep:str='.'):
 
     return result_keys
 
+
+def string_tuple_to_tuple(string_tuple):
+    return tuple(map(int, string_tuple.strip("()").split(",")))
+
+
 if __name__ == "__main__":
     print(f"run your quick test here for all functions/classes in this script {__file__}.")
     print("-----------------------------------------------------------")

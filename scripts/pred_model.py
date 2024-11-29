@@ -4,11 +4,8 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
 sys.path.append(project_root)
 # predict.py
 import click
-import torch
-import nibabel as nib
-import numpy as np
 from src.inference.predict import pred_cnn, pred_unet
-from src.utils.utils import load_config_from_yaml
+from src.utils.configYaml import load_config_from_yaml
 
 
 @click.command()

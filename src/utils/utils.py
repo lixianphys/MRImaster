@@ -64,6 +64,26 @@ def delete_folder_with_confirmation(folder_path: str) -> None:
     else:
         print("Deletion cancelled.")
 
+def delete_folder_without_confirmation(folder_path: str) -> None:
+    """
+    Deletes a folder and all its contents with user confirmation.
+
+    Args:
+        folder_path (str): Path to the folder to delete.
+    """
+    # Check if the folder exists
+    if not os.path.exists(folder_path):
+        print(f"Folder '{folder_path}' does not exist.")
+        return
+    try:
+        shutil.rmtree(folder_path)
+        print(f"Folder '{folder_path}' and its contents have been deleted.")
+    except PermissionError:
+        print(f"Permission denied: Unable to delete '{folder_path}'.")
+    except Exception as e:
+        print(f"An error occurred while deleting the folder: {e}")
+
+
 
 
 def script_path(filename):

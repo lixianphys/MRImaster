@@ -2,26 +2,32 @@ import sys
 import os
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
 sys.path.append(project_root)
-import torch
-import torchvision
-import torchvision.transforms as transforms 
-from torch.utils.data import DataLoader
-from src.utils.utils import (True_and_Pred, CLA_label,show_confusion_matrix, dice_score_per_class, iou_per_class)
-from src.unet3d import UNet3D
-from src.cnn import CNN_TUMOR
-from sklearn.metrics import (confusion_matrix, classification_report, accuracy_score)
-from src.preprocess.nifti import NormalLoadingNiftiDataset
+
 import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
 import numpy as np
+
+import torch
+import torchvision
+import torchvision.transforms as transforms 
+from torch.utils.data import DataLoader
+from sklearn.metrics import (confusion_matrix, classification_report, accuracy_score)
+
+from src.utils.utils import (True_and_Pred, CLA_label,show_confusion_matrix, dice_score_per_class, iou_per_class)
+from src.unet3d import UNet3D
+from src.cnn import CNN_TUMOR
+from src.preprocess.nifti import NormalLoadingNiftiDataset
+from src.utils.configYaml import string_tuple_to_tuple
+
 
 
 def eval_cnn(config):
     "Evaluate a CNN model"
     batch_size= config['eval']['batch_size']
     data_path = config['eval']['data']
-    image_size = tuple(config['eval']['image_size'])
+    image_size = string_tuple_to_tuple(config['eval']['image_size'])
+    shape_in = string_tuple_to_tuple(config['model']['shape_in'])
     print(f"Working on dataset at {data_path}")
     device=torch.device(config['eval']['device'])
     # define transformation
@@ -35,10 +41,10 @@ def eval_cnn(config):
     val_set = torchvision.datasets.ImageFolder(data_path,transform=transform)
     val_loader = DataLoader(val_set, batch_size = batch_size, shuffle = True, num_workers = 2)
     report_path = config['eval']['report']
-
+ 
     model = CNN_TUMOR(
     {
-    'shape_in': tuple(config['model']['shape_in']),
+    'shape_in': shape_in,
     'num_classes':config['model']['num_classes'],
     'initial_filters': config['model']['initial_filters'],
     'num_fc1':config['model']['num_fc1'],

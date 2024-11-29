@@ -86,7 +86,7 @@ KAGGLE_KEY = ''
 ```
 or set the environment variables with `export KAGGLE_USERNAME=XXX`, then run 
 ```shell
-python3 scripts/load_cnn_data.py
+python3 scripts/load_kaggle_data.py
 ```
 If everything goes well, you will see:
 ```shell

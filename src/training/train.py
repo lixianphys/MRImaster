@@ -27,10 +27,11 @@ from src.utils.utils import (
     iou_per_class,
     dice_score_per_class,
     check_and_prepare_file_path,
-    delete_folder_with_confirmation)
+    delete_folder_without_confirmation)
 from src.utils.configYaml import (
     pretty_print_config,
-    extract_hyperparameters)
+    extract_hyperparameters,
+    string_tuple_to_tuple)
 import copy
 from typing import Dict, Union
 
@@ -60,9 +61,6 @@ class TrainCNN(Train):
         pretty_print_config(extract_hyperparameters(
             config, extracted_keys = cnn_keys_to_print)
         )
-        def string_tuple_to_tuple(string_tuple):
-            return tuple(map(int, string_tuple.strip("()").split(",")))
-        
         shape_in = string_tuple_to_tuple(config['model']['shape_in'])
         num_classes = config['model']['num_classes']
         initial_filters = config['model']['initial_filters']
@@ -97,7 +95,7 @@ class TrainCNN(Train):
         if not skip_loading: # load and augment data
             print(f"Loading Data into Train and Validation folder with the train_ratio {train_ratio}...")
             data_dir = pathlib.Path(config['train']['data']['dataset'])
-            delete_folder_with_confirmation(config['train']['data']['output'])
+            delete_folder_without_confirmation(config['train']['data']['output'])
             splitfolders.ratio(data_dir, output=config['train']['data']['output'], seed=20, ratio=(train_ratio, 1-train_ratio))
             # new dataset path
         
