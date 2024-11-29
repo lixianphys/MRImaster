@@ -95,7 +95,6 @@ class TrainCNN(Train):
         if not skip_loading: # load and augment data
             print(f"Loading Data into Train and Validation folder with the train_ratio {train_ratio}...")
             data_dir = pathlib.Path(config['train']['data']['dataset'])
-            delete_folder_without_confirmation(config['train']['data']['output'])
             splitfolders.ratio(data_dir, output=config['train']['data']['output'], seed=20, ratio=(train_ratio, 1-train_ratio))
             # new dataset path
         
