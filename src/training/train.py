@@ -346,7 +346,7 @@ class TrainUnet(Train):
             iou_score = [0.0]*out_channels
             for batch, (inputs, labels) in enumerate(dataloader):  # inputs shape: (batch_size, 4, H, W, D), labels shape: (batch_size, H, W, D)
                 optimizer.zero_grad()
-                
+                inputs = inputs.to(device) 
                 outputs = model(inputs)  # outputs shape: (batch_size, num_classes, H, W, D)
                 loss = criterion(outputs, labels)  # Compute the combined Dice + Cross-Entropy loss
                 for c in range(out_channels):
