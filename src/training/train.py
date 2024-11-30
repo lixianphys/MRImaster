@@ -42,6 +42,11 @@ cnn_keys_to_print = [
     'train.epochs',
     'train.learning_rate']
 
+unet_keys_to_print = [
+    'model',
+    'train.batch_size',
+    'train.epochs',
+    'train.learning_rate']
 
 
 class Train(ABC):
@@ -259,11 +264,6 @@ class DiceCrossEntropyLoss(nn.Module):
         dice_loss = torch.mean(torch.stack(dice_loss_per_class, dim=1), dim=1)  # Average over classes
         return dice_loss.mean()  # Average over batch
 
-unet_keys_to_print = [
-    'model',
-    'train.batch_size',
-    'train.epochs',
-    'train.learning_rate']
 
 class TrainUnet(Train):
     """ Train a 3D Unet model"""

@@ -40,7 +40,7 @@ axes = {
 
 # Load models once and cache them
 @st.cache_resource
-def load_models(device):
+def load_models():
     cnn_model = load_cnn_model(
         model_path=cnn_config['deploy']['model'], 
         device = torch.device(cnn_config['deploy']['device']), 
@@ -69,7 +69,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # Load models
-    cnn_model, unet3d_model = load_models(device)
+    cnn_model, unet3d_model = load_models()
     
     if model_type == "CNN (2D Image Classification)":
         st.subheader("2D Image Classification with CNN")
