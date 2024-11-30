@@ -18,7 +18,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 
-from src.preprocess.nifti import LazyLoadingNiftiDataset
+from src.preprocess.nifti import LazyLoadingNiftiDataset,NormalLoadingNiftiDataset
 from src.unet3d import UNet3D
 from src.cnn import CNN_TUMOR
 from src.utils.utils import (
@@ -320,7 +320,7 @@ class TrainUnet(Train):
         label_paths = [os.path.join(lbl_folder,file_path) for file_path in lbl_filenames]
         cache_dir = config['train']['data']['cache_path']
         # Initialize the dataset with caching
-        dataset = LazyLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths, cache_dir=cache_dir)
+        dataset = NormalLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths, cache_dir=cache_dir)
 
         # Create a DataLoader for batching
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=1)
