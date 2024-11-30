@@ -320,7 +320,7 @@ class TrainUnet(Train):
         label_paths = [os.path.join(lbl_folder,file_path) for file_path in lbl_filenames]
         cache_dir = config['train']['data']['cache_path']
         # Initialize the dataset with caching
-        dataset = NormalLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths, cache_dir=cache_dir)
+        dataset = NormalLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths)
 
         # Create a DataLoader for batching
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=1)
