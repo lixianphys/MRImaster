@@ -4,6 +4,82 @@ import torch.nn.functional as F
 import torch
 import torchvision.transforms as transforms
 import cv2
+import lightning as L
+
+
+# Define Architecture For CNN_TUMOR Model
+class LiCNN(L.LightningModule):
+    # Network Initialisation
+    def __init__(self, params):
+        super().__init__()
+        Cin,Hin,Win = params["shape_in"]
+        init_f = params["initial_filters"] 
+        num_fc1 = params["num_fc1"]  
+        num_classes = params["num_classes"] 
+        self.dropout_rate = params["dropout_rate"] 
+        self.learning_rate = params.get("learning_rate", 1e-3)
+    
+        # Convolutional layers
+        self.conv_layers = nn.Sequential(
+            self.convBlock(Cin, init_f),
+            self.convBlock(init_f, 2 * init_f),
+            self.convBlock(2 * init_f, 4 * init_f),
+            self.convBlock(4 * init_f, 8 * init_f)
+        )
+
+        # Dynamically calculate flattened size
+        with torch.no_grad():
+            dummy_input = torch.zeros(1, Cin, Hin, Win)
+            flatten_dim = self.conv_layers(dummy_input).numel()
+
+        # Fully connected layers
+        self.fc_layers = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(flatten_dim, num_fc1),
+            nn.ReLU(),
+            nn.Dropout(self.dropout_rate),
+            nn.Linear(num_fc1, num_classes)
+        )
+
+    def forward(self,X):
+        X = self.conv_layers(X)
+        X = self.fc_layers(X)
+        return F.log_softmax(X, dim=1)
+
+    @staticmethod
+    def convBlock(in_channels, out_channels):
+        return nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+
+    def training_step(self, batch, batch_idx):
+        X, y = batch
+        y_hat = self.forward(X)
+        loss = F.nll_loss(y_hat, y)
+        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        X, y = batch
+        y_hat = self.forward(X)
+        loss = F.nll_loss(y_hat, y)
+        acc = (y_hat.argmax(dim=1) == y).float().mean()
+        self.log("val_loss", loss, prog_bar=True)
+        self.log("val_acc", acc, prog_bar=True)
+
+    def test_step(self, batch, batch_idx):
+        X, y = batch
+        y_hat = self.forward(X)
+        loss = F.nll_loss(y_hat, y)
+        acc = (y_hat.argmax(dim=1) == y).float().mean()
+        self.log("test_loss", loss)
+        self.log("test_acc", acc)
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
 def findConv2dOutShape(hin,win,conv,pool=2):
@@ -20,7 +96,6 @@ def findConv2dOutShape(hin,win,conv,pool=2):
         hout/=pool
         wout/=pool
     return int(hout),int(wout)
-
 
 
 # Define Architecture For CNN_TUMOR Model

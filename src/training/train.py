@@ -16,11 +16,13 @@ import torch.optim as optim
 import torchvision.transforms as transforms 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
+from pytorch_lightning.loggers import MLFlowLogger
+import lightning as L
 
 
 from src.preprocess.nifti import LazyLoadingNiftiDataset,NormalLoadingNiftiDataset
 from src.unet3d import UNet3D
-from src.cnn import CNN_TUMOR
+from src.cnn import CNN_TUMOR, LiCNN
 from src.utils.utils import (
     get_lr,
     loss_epoch,
@@ -381,4 +383,96 @@ class TrainUnet(Train):
             mlflow.log_artifact(model_save_path, artifact_path="models")
             mlflow.end_run()
 
-   
+
+class LiTrain(ABC):
+    @abstractmethod
+    def __call__(self, *args, **kwargs):
+        pass 
+
+class LiTrainCNN(LiTrain):
+    """Train a simple CNN model with lightning"""
+    def __init__(self):
+        self.counts = 0
+    @property
+    def keys_to_print(self):
+        return [
+                'model',
+                'train.load.train_ratio',
+                'train.batch_size',
+                'train.epochs',
+                'train.learning_rate']
+
+    def __call__(self,config: Dict):
+        self.counts += 1
+
+        print("Training with configuration:\n")
+        pretty_print_config(extract_hyperparameters(
+            config, extracted_keys = self.keys_to_print)
+        )
+        shape_in = string_tuple_to_tuple(config['model']['shape_in'])
+        num_classes = config['model']['num_classes']
+        initial_filters = config['model']['initial_filters']
+        num_fc1 = config['model']['num_fc1']
+        dropout_rate = config['model']['dropout_rate']
+        image_size = string_tuple_to_tuple(config['train']['load']['image_size'])
+        skip_loading = config['train']['skip_loading']
+        batch_size = config['train']['batch_size']
+        epochs = config['train']['epochs']
+        verbose = config['train']['verbose']
+        deterministic = config['train']['deterministic']
+        train_ratio = config['train']['load']['train_ratio']
+        device = config['train']['device']
+        learning_rate = float(config['train']['learning_rate'])
+        mlflow_enabled = config['train']['mlflow']['enabled']
+        model_save_path = check_and_prepare_file_path(
+            os.path.join(
+                config['train']['save_path'],
+                f'Exp_{self.counts}.pt' if config['train']['checkpoint_name']=="#" else config['train']['checkpoint_name']
+            )
+        )
+        model = LiCNN({
+                'shape_in':shape_in,
+                'num_classes':num_classes,
+                'initial_filters': initial_filters,
+                'num_fc1':num_fc1,
+                'dropout_rate':dropout_rate,
+                'learning_rate':learning_rate,
+                }
+                )
+
+        if not skip_loading: # load and augment data
+            print(f"Loading Data into Train and Validation folder with the train_ratio {train_ratio}...")
+            data_dir = pathlib.Path(config['train']['data']['dataset'])
+            splitfolders.ratio(data_dir, output=config['train']['data']['output'], seed=20, ratio=(train_ratio, 1-train_ratio))
+
+
+        data_dir = pathlib.Path(config['train']['data']['output'])
+
+        print("Data Augmentation Starts ...")
+
+        # define transformation
+        transform = transforms.Compose(
+            [
+                transforms.Resize(image_size),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomVerticalFlip(p=0.5),
+                transforms.RandomRotation(30),
+                transforms.ToTensor(),
+                transforms.Normalize(mean = [0.485, 0.456, 0.406],std = [0.229, 0.224, 0.225])
+            ]
+        )    
+        # Define an object of the custom dataset for the train and validation.
+        train_set = torchvision.datasets.ImageFolder(data_dir.joinpath(config['train']['data']['train_set']), transform=transform) 
+        val_set = torchvision.datasets.ImageFolder(data_dir.joinpath(config['train']['data']['val_set']), transform=transform)
+
+        train_dl = DataLoader(train_set, batch_size = batch_size, shuffle = True, num_workers = 2)
+        val_dl = DataLoader(val_set, batch_size = batch_size, shuffle = False, num_workers = 2)
+
+        mlflow_logger = MLFlowLogger(experiment_name=config['train']['mlflow']['experiment'],tracking_uri=config['train']['mlflow']['uri'])
+        trainer = L.Trainer(
+            accelerator= device,
+            max_epochs=epochs,
+            logger=mlflow_logger if mlflow_enabled else None,
+            deterministic=deterministic)
+
+        trainer.fit(model, train_dl, val_dl)

@@ -2,7 +2,7 @@ import sys
 import os
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
 sys.path.append(project_root)
-from src.training.train import TrainCNN, TrainUnet
+from src.training.train import TrainCNN, TrainUnet, LiTrainCNN
 from src.utils.configYaml import (load_config_from_yaml, generate_param_combinations, pretty_print_config, extract_hyperparameters)
 import click
 
@@ -15,8 +15,8 @@ import click
     default=False,
     help="If set, only prints the generated configurations without running training."
 )
-@click.option('--use_mlflow', is_flag=True, help="Use MLflow for tracking training metrics and parameters.")
-def train_model(model:str, config:str, dry_run:bool, use_mlflow:bool):
+@click.option('--legacy', is_flag=True, help="Use legacy model instead of Pytorch-lightning.")
+def train_model(model:str, config:str, dry_run:bool,legacy:bool):
     """
     CLI command to train a model.
     """
@@ -46,11 +46,13 @@ def train_model(model:str, config:str, dry_run:bool, use_mlflow:bool):
         print("Dry run completed. No training was executed.")
         return
     # Run the experiments
-    train_cnn = TrainCNN()
-    train_unet = TrainUnet()
+    if legacy:
+        train_cnn = TrainCNN()
+        train_unet = TrainUnet()
+    else:
+        train_cnn = LiTrainCNN()
+        train_unet = TrainUnet()
     for exp in experiments:
-        if use_mlflow:
-            exp['train']['mlflow']['enabled'] = True
         # Determine which model to train
         if model.lower() == 'cnn':
             click.echo("Training CNN model...")

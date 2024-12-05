@@ -3,12 +3,12 @@ model:
   type: "cnn"
   shape_in: (3,256,256)  # default: [C=3,W=256,H=256]  
   num_classes: 4  # default: 4
-  initial_filters: 64 # default: 8
+  initial_filters: 4 # default: 8
   num_fc1: 100  # default: 100
   dropout_rate: 0.25  # default: 0.25
 
 train:
-  skip_loading: false # set true if you want to use the existing data in output folder.
+  skip_loading: true # set true if you want to use the existing data in output folder.
   data:
     dataset: "data/raw_data/brain-tumor-classification-mri/Training" # raw data
     # !! if skip_loading == False, run this training WILL DELETE THIS 'output' DIRECTORY TO REMOVE DATA FROM PREVIOUS TRAINING WITH YOUR PERMISSION.
@@ -20,15 +20,16 @@ train:
     image_size: (256,256) # default: [H=256,W=256] transform to this image size. 
   mlflow:
     enabled: false
-    uri: "http://localhost:5000"
-    experiment: "TuneCNN"
+    uri: "file:./mlruns"
+    experiment: "LightningMo"
   batch_size: 32 # default: 64
-  epochs: 30
+  epochs: 5
   learning_rate: 3e-4 # default: 3e-4
   verbose: true
-  device: 'cpu' # most commonly “cpu” or “cuda”, but also potentially “mps”, “xpu”, “xla” or “meta”.
+  deterministic: false
+  device: 'cpu' # “cpu”, “gpu”, “tpu”, “hpu”, “mps”, “auto” for legacy: cpu, cuda, ipu, xpu, mkldnn, opengl, opencl, ideep, hip, ve, fpga, maia, xla, lazy, vulkan, mps, meta, hpu, mtia
   save_path: "checkpoints/cnn_model"
-  checkpoint_name: "test.pt"
+  checkpoint_name: "licnn.pt"
 
 eval:
   model: "checkpoints/cnn_model/tunecnn/Exp_10.pt"
