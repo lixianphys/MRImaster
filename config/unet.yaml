@@ -12,14 +12,16 @@ train:
     label_folder: "labelTr"
   mlflow:
     enabled: true                 # Enable MLflow logging
-    uri: "http://localhost:5000"  # MLflow server URI
+    uri: "file:./mlruns"  # MLflow server URI
     experiment: "3D_UNet_MRI_Segmentation"  # Name of the MLflow experiment
   batch_size: 1                 # Batch size (adjust based on available GPU memory)
-  epochs: 20                 # Number of training epochs
+  epochs: 5                # Number of training epochs
   learning_rate: 0.0001         # Learning rate for the optimizer
   verbose: true
+  deterministic: false
+  train_ratio: 0.8 # default: 0.8 split folders into train and val sets by this ratio
   celoss_ratio: 1 # value falls between 0 and 1
-  device: 'cpu'
+  device: 'cpu'  # “cpu”, “gpu”, “tpu”, “hpu”, “mps”, “auto” for legacy: cpu, cuda, ipu, xpu, mkldnn, opengl, opencl, ideep, hip, ve, fpga, maia, xla, lazy, vulkan, mps, meta, hpu, mtia
   save_path: "checkpoints/unet_model"
   checkpoint_name: "test.pt"
 

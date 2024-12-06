@@ -17,3 +17,5 @@ click==8.1.7
 metaflow==2.12.19
 PyYAML==6.0.2
 torch_summary==1.4.5
+pytorch-lightning==2.4.0
+lightning==2.4.0

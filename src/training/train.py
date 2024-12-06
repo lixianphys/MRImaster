@@ -15,13 +15,12 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torchvision.transforms as transforms 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from pytorch_lightning.loggers import MLFlowLogger
 import lightning as L
 
-
 from src.preprocess.nifti import LazyLoadingNiftiDataset,NormalLoadingNiftiDataset
-from src.unet3d import UNet3D
+from src.unet3d import UNet3D, LiUNet3D, DiceCrossEntropyLoss
 from src.cnn import CNN_TUMOR, LiCNN
 from src.utils.utils import (
     get_lr,
@@ -230,41 +229,7 @@ class TrainCNN(Train):
             mlflow.log_artifact(model_save_path, artifact_path="models")
             mlflow.end_run()
 
-class DiceCrossEntropyLoss(nn.Module):
-    def __init__(self, celoss_ratio:Union[float,int] =1):
-        super().__init__()
-        self.cross_entropy = nn.CrossEntropyLoss()
-        self.celoss_ratio = celoss_ratio
 
-    def forward(self, outputs, labels):
-        # Cross-entropy loss
-        ce_loss = self.cross_entropy(outputs, labels)
-        
-        # Dice loss for each class
-        outputs_soft = F.softmax(outputs, dim=1)  # Softmax along the channel dimension
-        labels_one_hot = F.one_hot(labels, num_classes=outputs.shape[1]).permute(0, 4, 1, 2, 3).float()
-        
-        dice_loss_value = DiceCrossEntropyLoss.dice_loss(outputs_soft, labels_one_hot)
-        
-       # Combine losses (equal weighting of CE and Dice)
-        total_loss = ce_loss*self.celoss_ratio + dice_loss_value
-        return total_loss
-    
-    @staticmethod
-    def dice_loss(outputs_soft, labels_one_hot, smooth=1.0):
-        """
-        Compute the average Dice loss across all classes.
-        """
-        dice_loss_per_class = []
-        for i in range(outputs_soft.shape[1]):  # Loop over each class
-            pred = outputs_soft[:, i]  # Softmax probability for class `i`
-            target = labels_one_hot[:, i]  # One-hot encoded ground truth for class `i`
-            intersection = (pred * target).sum(dim=(1, 2, 3))  # Sum over spatial dimensions
-            dice = (2.0 * intersection + smooth) / (pred.sum(dim=(1, 2, 3)) + target.sum(dim=(1, 2, 3)) + smooth)
-            dice_loss_per_class.append(1 - dice)  # Dice loss for class `i`
-        # Average Dice loss over batch and classes
-        dice_loss = torch.mean(torch.stack(dice_loss_per_class, dim=1), dim=1)  # Average over classes
-        return dice_loss.mean()  # Average over batch
 
 
 class TrainUnet(Train):
@@ -418,18 +383,12 @@ class LiTrainCNN(LiTrain):
         skip_loading = config['train']['skip_loading']
         batch_size = config['train']['batch_size']
         epochs = config['train']['epochs']
-        verbose = config['train']['verbose']
         deterministic = config['train']['deterministic']
         train_ratio = config['train']['load']['train_ratio']
         device = config['train']['device']
         learning_rate = float(config['train']['learning_rate'])
         mlflow_enabled = config['train']['mlflow']['enabled']
-        model_save_path = check_and_prepare_file_path(
-            os.path.join(
-                config['train']['save_path'],
-                f'Exp_{self.counts}.pt' if config['train']['checkpoint_name']=="#" else config['train']['checkpoint_name']
-            )
-        )
+
         model = LiCNN({
                 'shape_in':shape_in,
                 'num_classes':num_classes,
@@ -467,6 +426,70 @@ class LiTrainCNN(LiTrain):
 
         train_dl = DataLoader(train_set, batch_size = batch_size, shuffle = True, num_workers = 2)
         val_dl = DataLoader(val_set, batch_size = batch_size, shuffle = False, num_workers = 2)
+
+        mlflow_logger = MLFlowLogger(experiment_name=config['train']['mlflow']['experiment'],tracking_uri=config['train']['mlflow']['uri'])
+        trainer = L.Trainer(
+            accelerator= device,
+            max_epochs=epochs,
+            logger=mlflow_logger if mlflow_enabled else None,
+            deterministic=deterministic)
+
+        trainer.fit(model, train_dl, val_dl)
+
+
+class LiTrainUnet(Train):
+    """ Train a 3D Unet model with pytorch-lightning"""
+    def __init__(self):
+        self.counts = 0
+    
+    @property
+    def keys_to_print(self):
+        return  [
+                'model',
+                'train.batch_size',
+                'train.epochs',
+                'train.learning_rate']
+
+    def __call__(self,config:Dict):
+        self.counts+=1
+        print("Training with configuration:\n")
+        pretty_print_config(extract_hyperparameters(
+            config, extracted_keys = self.keys_to_print)
+        )        
+        in_channels=config['model']['in_channels']
+        out_channels=config['model']['out_channels']
+        epochs=config['train']['epochs']
+        batch_size = config['train']['batch_size']
+        learning_rate = float(config['train']['learning_rate'])
+        celoss_ratio = float(config['train']['celoss_ratio'])
+        mlflow_enabled = config['train']['mlflow']['enabled']
+        image_folder = config['train']['data']['image_folder']
+        label_folder = config['train']['data']['label_folder']
+
+        deterministic = config['train']['deterministic']
+        # Paths to NIfTI images and labels
+        brats_data_path = config['train']['data']['data_path']
+        # place all images (nii or nii.gz) in data_path/image_folder
+        img_folder = os.path.join(brats_data_path,image_folder)
+        # place all labels (nii or nii.gz) in data_path/label_folder
+        lbl_folder = os.path.join(brats_data_path,label_folder)
+        img_filenames = os.listdir(img_folder)
+        lbl_filenames = os.listdir(lbl_folder)
+
+
+        image_paths = [os.path.join(img_folder,file_path) for file_path in img_filenames]
+        label_paths = [os.path.join(lbl_folder,file_path) for file_path in lbl_filenames]
+        # Initialize the dataset with caching
+        dataset = NormalLoadingNiftiDataset(image_paths=image_paths, label_paths=label_paths)
+        train_ratio = float(config['train']['train_ratio'])
+        train_ds, val_ds = random_split(dataset, [train_ratio,1-train_ratio])
+
+        # Create a DataLoader for batching
+        train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=1)
+        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=True, num_workers=1)
+
+        device  = config['train']['device']
+        model = LiUNet3D(in_channels,out_channels,learning_rate)
 
         mlflow_logger = MLFlowLogger(experiment_name=config['train']['mlflow']['experiment'],tracking_uri=config['train']['mlflow']['uri'])
         trainer = L.Trainer(

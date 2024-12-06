@@ -2,7 +2,7 @@ import sys
 import os
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
 sys.path.append(project_root)
-from src.training.train import TrainCNN, TrainUnet, LiTrainCNN
+from src.training.train import TrainCNN, TrainUnet, LiTrainCNN, LiTrainUnet
 from src.utils.configYaml import (load_config_from_yaml, generate_param_combinations, pretty_print_config, extract_hyperparameters)
 import click
 
@@ -51,7 +51,7 @@ def train_model(model:str, config:str, dry_run:bool,legacy:bool):
         train_unet = TrainUnet()
     else:
         train_cnn = LiTrainCNN()
-        train_unet = TrainUnet()
+        train_unet = LiTrainUnet()
     for exp in experiments:
         # Determine which model to train
         if model.lower() == 'cnn':
