@@ -102,9 +102,6 @@ class LiUNet3D(L.LightningModule):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
 
-
-
-
 class UNet3D(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(UNet3D, self).__init__()

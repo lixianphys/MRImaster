@@ -486,7 +486,7 @@ class LiTrainUnet(Train):
 
         # Create a DataLoader for batching
         train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=1)
-        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=True, num_workers=1)
+        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=1)
 
         device  = config['train']['device']
         model = LiUNet3D(in_channels,out_channels,learning_rate)
