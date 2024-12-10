@@ -33,7 +33,7 @@ eval:
   report: "output/evaluation_report_unet.md"
 
 deploy:
-  model: "checkpoints/deployed_models/unet_model.pt"
+  model: "checkpoints/deployed_models/epoch=19-step=2300.ckpt"
   input: "data/imageTr/BRATS_001.nii.gz"  # Path to the input image
   device: 'cpu'
   output: "output/segmented_volume.nii"

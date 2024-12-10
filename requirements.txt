@@ -19,3 +19,4 @@ PyYAML==6.0.2
 torch_summary==1.4.5
 pytorch-lightning==2.4.0
 lightning==2.4.0
+streamlit==1.40.2

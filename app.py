@@ -10,7 +10,7 @@ from src.inference.predict import (
     preprocess_image, preprocess_volume,
     cnn_inference, unet3d_inference
 )
-from src.utils.utils import CLA_label, load_config_from_yaml
+from src.utils.configYaml import load_config_from_yaml, string_tuple_to_tuple
 from src.cnn import im2gradCAM
 
 
@@ -45,7 +45,7 @@ def load_models():
         model_path=cnn_config['deploy']['model'], 
         device = torch.device(cnn_config['deploy']['device']), 
         params = {
-        "shape_in":tuple(cnn_config['model']['shape_in']),
+        "shape_in":string_tuple_to_tuple(cnn_config['model']['shape_in']),
         "num_classes":cnn_config['model']['num_classes'],
         "initial_filters":cnn_config['model']['initial_filters'],
         "num_fc1":cnn_config['model']['num_fc1'],

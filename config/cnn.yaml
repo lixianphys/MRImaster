@@ -3,7 +3,7 @@ model:
   type: "cnn"
   shape_in: (3,256,256)  # default: [C=3,W=256,H=256]  
   num_classes: 4  # default: 4
-  initial_filters: 4 # default: 8
+  initial_filters: 8 # default: 8
   num_fc1: 100  # default: 100
   dropout_rate: 0.25  # default: 0.25
 

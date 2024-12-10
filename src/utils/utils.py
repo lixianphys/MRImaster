@@ -254,6 +254,10 @@ def iou_per_class(pred, target, num_classes, smooth=1.0):
         iou_scores.append(iou.item())
     return iou_scores
 
+def load_config_from_yaml(config_path):
+    """Load configuration from a YAML file."""
+    with open(config_path, 'r') as file:
+        return yaml.safe_load(file)
 
 if __name__ == "__main__":
     print(f"run your quick test here for all functions/classes in this script {__file__}.")
