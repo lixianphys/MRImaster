@@ -59,13 +59,23 @@ def pred_unet(config):
 
 def load_cnn_model(model_path, device, params):
     model = CNN_TUMOR(params).to(device)
-    model.load_state_dict(torch.load(model_path, weights_only=True,map_location=device))
+    # Load based on file extension
+    if model_path.endswith('.ckpt'):
+        checkpoint = torch.load(model_path, map_location=device)
+        model.load_state_dict(checkpoint['state_dict'])
+    else:  # .pt or .pth files
+        model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
     return model
 
 def load_unet3d_model(model_path, device, in_channels=1, out_channels=1):
     model = UNet3D(in_channels=in_channels, out_channels=out_channels).to(device)
-    model.load_state_dict(torch.load(model_path, weights_only=True,map_location=device))
+    # Load based on file extension
+    if model_path.endswith('.ckpt'):
+        checkpoint = torch.load(model_path, map_location=device)
+        model.load_state_dict(checkpoint['state_dict'])
+    else:  # .pt or .pth files
+        model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
     return model
 

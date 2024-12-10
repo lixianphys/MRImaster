@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader, random_split
 from pytorch_lightning.loggers import MLFlowLogger
 import lightning as L
 
-from src.preprocess.nifti import LazyLoadingNiftiDataset,NormalLoadingNiftiDataset
+from src.preprocess.nifti import NormalLoadingNiftiDataset
 from src.unet3d import UNet3D, LiUNet3D, DiceCrossEntropyLoss
 from src.cnn import CNN_TUMOR, LiCNN
 from src.utils.utils import (
