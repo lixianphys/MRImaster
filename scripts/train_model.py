@@ -47,9 +47,11 @@ def train_model(model:str, config:str, dry_run:bool,legacy:bool):
         return
     # Run the experiments
     if legacy:
+        click.echo("Training legacy model...")
         train_cnn = TrainCNN()
         train_unet = TrainUnet()
     else:
+        click.echo("Training Pytorch-lightning model...")
         train_cnn = LiTrainCNN()
         train_unet = LiTrainUnet()
     for exp in experiments:

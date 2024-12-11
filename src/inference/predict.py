@@ -64,7 +64,7 @@ def load_cnn_model(model_path, device, params):
         checkpoint = torch.load(model_path, map_location=device)
         model.load_state_dict(checkpoint['state_dict'])
     else:  # .pt or .pth files
-        model.load_state_dict(torch.load(model_path, map_location=device))
+        model.load_state_dict(torch.load(model_path, map_location=device,weights_only=True))
     model.eval()
     return model
 
@@ -75,7 +75,7 @@ def load_unet3d_model(model_path, device, in_channels=1, out_channels=1):
         checkpoint = torch.load(model_path, map_location=device)
         model.load_state_dict(checkpoint['state_dict'])
     else:  # .pt or .pth files
-        model.load_state_dict(torch.load(model_path, map_location=device))
+        model.load_state_dict(torch.load(model_path, map_location=device,weights_only=True))
     model.eval()
     return model
 
@@ -92,7 +92,7 @@ def preprocess_image(image_path, device):
     image = transform(image).unsqueeze(0)  # Add batch dimension
     return image.to(device)
 
-def preprocess_volume(volume, device):
+def preprocess_volume(volume, device, is_label=False):
     def center_crop(img, target_shape=(128,128,128)):
         """Crop the center of the image to the target shape."""
         crop_slices = tuple(
@@ -105,7 +105,7 @@ def preprocess_volume(volume, device):
     volume = center_crop(volume)
     volume = (volume-np.mean(volume))/np.std(volume)
     volume = np.clip(volume, 0, 1)
-    volume = torch.tensor(volume, dtype=torch.float32).permute(3, 0, 1, 2).unsqueeze(0)
+    volume = torch.tensor(volume, dtype=torch.float32).permute(3, 0, 1, 2).unsqueeze(0) if not is_label else torch.tensor(volume, dtype=torch.long).unsqueeze(0)
     return volume.to(device)
 
 
