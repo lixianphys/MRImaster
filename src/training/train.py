@@ -20,7 +20,7 @@ from pytorch_lightning.loggers import MLFlowLogger
 import lightning as L
 
 from src.preprocess.nifti import NormalLoadingNiftiDataset
-from src.unet3d import UNet3D, LiUNet3D, DiceCrossEntropyLoss
+from src.unet3d import UNet3D, LiUNet, DiceCrossEntropyLoss
 from src.cnn import CNN_TUMOR, LiCNN
 from src.utils.utils import (
     get_lr,
@@ -489,7 +489,7 @@ class LiTrainUnet(Train):
         val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=3)
 
         device  = config['train']['device']
-        model = LiUNet3D(in_channels,out_channels,learning_rate)
+        model = LiUNet(in_channels,out_channels,dims=3,learning_rate=learning_rate)
 
         mlflow_logger = MLFlowLogger(experiment_name=config['train']['mlflow']['experiment'],tracking_uri=config['train']['mlflow']['uri'])
         trainer = L.Trainer(

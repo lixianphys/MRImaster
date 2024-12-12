@@ -5,12 +5,18 @@ import lightning as L
 from typing import Union
 
 
-class LiUNet3D(L.LightningModule):
-    def __init__(self, in_channels, out_channels, learning_rate=1e-3):
+class LiUNet(L.LightningModule):
+    def __init__(self, in_channels, out_channels, dims=3, learning_rate=1e-3):
         super().__init__()
         
         # Save hyperparameters for flexibility
         self.save_hyperparameters()
+
+        # Select appropriate convolution and pooling operations based on dimensions
+        self.conv = getattr(nn, f'Conv{dims}d')
+        self.conv_transpose = getattr(nn, f'ConvTranspose{dims}d')
+        self.batch_norm = getattr(nn, f'BatchNorm{dims}d')
+        self.max_pool = getattr(F, f'max_pool{dims}d')
 
         self.criterion = DiceCrossEntropyLoss()
 
@@ -39,12 +45,12 @@ class LiUNet3D(L.LightningModule):
     def forward(self, x):
         # Encoding path
         enc1 = self.enc1(x)
-        enc2 = self.enc2(F.max_pool3d(enc1, 2))
-        enc3 = self.enc3(F.max_pool3d(enc2, 2))
-        enc4 = self.enc4(F.max_pool3d(enc3, 2))
+        enc2 = self.enc2(self.max_pool(enc1, 2))
+        enc3 = self.enc3(self.max_pool(enc2, 2))
+        enc4 = self.enc4(self.max_pool(enc3, 2))
         
         # Bottleneck
-        bottleneck = self.bottleneck(F.max_pool3d(enc4, 2))
+        bottleneck = self.bottleneck(self.max_pool(enc4, 2))
         
         # Decoding path
         dec4 = self.upconv4(bottleneck)
@@ -67,14 +73,13 @@ class LiUNet3D(L.LightningModule):
         out = self.out_conv(dec1)
         return out
     
-    @staticmethod
-    def _conv_block(in_channels, out_channels):
+    def _conv_block(self,in_channels, out_channels):
         return nn.Sequential(
-            nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm3d(out_channels),
+            self.conv(in_channels, out_channels, kernel_size=3, padding=1),
+            self.batch_norm(out_channels),
             nn.ReLU(inplace=True),
-            nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm3d(out_channels),
+            self.conv(out_channels, out_channels, kernel_size=3, padding=1),
+            self.batch_norm(out_channels),
             nn.ReLU(inplace=True)
         )
     
@@ -172,7 +177,7 @@ class UNet3D(nn.Module):
 
 
 class DiceCrossEntropyLoss(nn.Module):
-    def __init__(self, celoss_ratio:Union[float,int] =1):
+    def __init__(self, celoss_ratio:Union[float,int] =1, dims:int=3):
         super().__init__()
         self.cross_entropy = nn.CrossEntropyLoss()
         self.celoss_ratio = celoss_ratio
@@ -183,16 +188,20 @@ class DiceCrossEntropyLoss(nn.Module):
         
         # Dice loss for each class
         outputs_soft = F.softmax(outputs, dim=1)  # Softmax along the channel dimension
-        labels_one_hot = F.one_hot(labels, num_classes=outputs.shape[1]).permute(0, 4, 1, 2, 3).float()
+        if self.dims == 3:
+            # For 3D: (B, C, D, H, W) -> (B, H, W, D, C)
+            labels_one_hot = F.one_hot(labels, num_classes=outputs.shape[1]).permute(0, 4, 1, 2, 3).float()
+        else:  # 2D
+            # For 2D: (B, C, H, W) -> (B, H, W, C)
+            labels_one_hot = F.one_hot(labels, num_classes=outputs.shape[1]).permute(0, 3, 1, 2).float()
         
-        dice_loss_value = DiceCrossEntropyLoss.dice_loss(outputs_soft, labels_one_hot)
+        dice_loss_value = self.dice_loss(outputs_soft, labels_one_hot)
         
        # Combine losses (equal weighting of CE and Dice)
         total_loss = ce_loss*self.celoss_ratio + dice_loss_value
         return total_loss
     
-    @staticmethod
-    def dice_loss(outputs_soft, labels_one_hot, smooth=1.0):
+    def dice_loss(self,outputs_soft, labels_one_hot, smooth=1.0):
         """
         Compute the average Dice loss across all classes.
         """

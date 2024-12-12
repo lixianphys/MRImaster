@@ -203,7 +203,7 @@ This dataset contains medical images intended solely for research, educational, 
 - [x] Object detection for identifying and measuring tumor size
 - [ ] CNN model inference for a folder of 2D images
 - [ ] UNet3D model inference for a folder of nii or nii.gz images
-- [ ] Generalize UNet3D into UNet with a `dim` parameter to switch to 1D, 2D model.
+- [x] Generalize UNet3D into UNet with a `dims` parameter to switch to 1D, 2D model.
 - [ ] Option to add validation during each epoch for UNet model.
 - [ ] Option to save the best model for each epoch
 - [ ] Better saving and loading model checkpoints. Check out monai.engines.SupervisedTrainer and monai.handlers.
