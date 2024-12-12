@@ -198,19 +198,20 @@ This configuration file should contain four blocks: `model`, `train`, `eval` and
 This dataset contains medical images intended solely for research, educational, and informational purposes.
 
 ### Features to add
-- [x] Switch between models for different classification tasks
-- [x] Data pipeline for additional datasets beyond Kaggle, e.g., [TCIA API](https://wiki.cancerimagingarchive.net/display/Public/TCIA+Programmatic+Interface+REST+API+Guides)
-- [x] Object detection for identifying and measuring tumor size
+- [ ] Integrate explainer for CNN model.
+- [ ] Add dice loss for different classes in UNet model and log more metrics.
+- [ ] Option to remove background(case 0) in UNet training when the background class may dominate the calculation and lead the network to optimise by just ignoring small segmentation classes.
+- [ ] Better saving and loading model checkpoints. Check out monai.engines.SupervisedTrainer and monai.handlers.
 - [ ] CNN model inference for a folder of 2D images
 - [ ] UNet3D model inference for a folder of nii or nii.gz images
-- [x] Generalize UNet3D into UNet with a `dims` parameter to switch to 1D, 2D model.
-- [ ] Option to add validation during each epoch for UNet model.
-- [ ] Option to save the best model for each epoch
-- [ ] Better saving and loading model checkpoints. Check out monai.engines.SupervisedTrainer and monai.handlers.
-- [ ] Deterministic training support
+
 - [ ] Integrate UNETR model for 3D segmentation.
-- [ ] Option to remove background(case 0) in UNet training when the background class may dominate the calculation and lead the network to optimise by just ignoring small segmentation classes.
-- [ ] Logging module
+
+- [x] Logging module
+- [x] Generalize UNet3D into UNet with a `dims` parameter to switch to 2D model.
+- [x] Option to add validation during each epoch for UNet model.
+- [x] Option to save the best model for each epoch
+- [x] Deterministic training support
 
 ## License
 

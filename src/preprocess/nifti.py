@@ -29,7 +29,7 @@ brat_metadata = {
 
 
 class NormalLoadingNiftiDataset(Dataset):
-    def __init__(self, image_paths, label_paths,target_shape=(128, 128, 128), transforms=None):
+    def __init__(self, image_paths, label_paths,target_shape=(64, 64, 64), transforms=None):
         self.image_paths = image_paths
         self.label_paths = label_paths
         self.target_shape = target_shape
@@ -85,7 +85,7 @@ class NormalLoadingNiftiDataset(Dataset):
 
 
 class LazyLoadingNiftiDataset(Dataset):
-    def __init__(self, image_paths, label_paths, cache_dir, target_shape=(128, 128, 128), transforms=None):
+    def __init__(self, image_paths, label_paths, cache_dir, target_shape=(64, 64, 64), transforms=None):
         self.image_paths = image_paths
         self.label_paths = label_paths
         self.cache_dir = cache_dir

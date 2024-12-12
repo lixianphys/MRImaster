@@ -84,8 +84,6 @@ def delete_folder_without_confirmation(folder_path: str) -> None:
         print(f"An error occurred while deleting the folder: {e}")
 
 
-
-
 def script_path(filename):
     """
     A convenience function to get the absolute path to a file in this
@@ -107,23 +105,6 @@ def timeit(fn):
         print(f"Time taken in {fn.__name__}: {time.time() - start:.3f} seconds.")
         return output  # make sure that the decorator returns the output of fn
     return get_time
-
-# Image Preprocessing (resize, normalize, convert to tensor)
-def preprocess_image(image):
-    # Define the transformations (modify based on your model's requirements)
-    transform = transforms.Compose([
-        transforms.Resize((256, 256)),  # Resize image to 256x256 (adjust as per your model)
-        transforms.ToTensor(),  # Convert image to PyTorch tensor
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize with ImageNet mean and std
-    ])
-    
-    # Apply the transformations
-    image = transform(image)
-    
-    # Add batch dimension (1, C, H, W) because model expects a batch of images
-    image = image.unsqueeze(0)
-    
-    return image
 
 
 # Function to get the learning rate
@@ -259,9 +240,3 @@ def load_config_from_yaml(config_path):
     with open(config_path, 'r') as file:
         return yaml.safe_load(file)
 
-if __name__ == "__main__":
-    print(f"run your quick test here for all functions/classes in this script {__file__}.")
-    print("-----------------------------------------------------------")
-    count_calls = Counter()
-    for i in range(5):
-        print(count_calls())

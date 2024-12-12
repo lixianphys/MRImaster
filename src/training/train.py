@@ -437,6 +437,41 @@ class LiTrainCNN(LiTrain):
         trainer.fit(model, train_dl, val_dl)
 
 
+class MetricsCallback(L.Callback):
+    """Callback for logging segmentation metrics during training and validation"""
+    
+    def _log_metrics(self, trainer, outputs, stage='train'):
+        """Helper method to calculate and log metrics"""
+        # Aggregate outputs from all batches
+        all_predictions = torch.cat([out['predictions'] for out in outputs])
+        all_targets = torch.cat([out['targets'] for out in outputs])
+        num_classes = outputs[0].get('num_classes', all_predictions.max().item() + 1)
+        
+        # Calculate IoU and Dice for each class
+        for cls in range(num_classes):
+            iou = iou_per_class(all_predictions, all_targets, num_classes=num_classes)[cls]
+            dice = dice_score_per_class(all_predictions, all_targets, num_classes=num_classes)[cls]
+            
+            trainer.logger.experiment.log_metric(
+                f"{stage}_iou_class_{cls}", 
+                iou.item(), 
+                step=trainer.current_epoch
+            )
+            trainer.logger.experiment.log_metric(
+                f"{stage}_dice_class_{cls}", 
+                dice.item(), 
+                step=trainer.current_epoch
+            )
+    
+    def on_train_epoch_end(self, trainer, pl_module):
+        outputs = trainer.fetch_log_metrics()['train_step_outputs']
+        self._log_metrics(trainer, outputs, stage='train')
+    
+    def on_validation_epoch_end(self, trainer, pl_module):
+        outputs = trainer.fetch_log_metrics()['validation_step_outputs']
+        self._log_metrics(trainer, outputs, stage='val')
+
+
 class LiTrainUnet(Train):
     """ Train a 3D Unet model with pytorch-lightning"""
     def __init__(self):
@@ -496,6 +531,7 @@ class LiTrainUnet(Train):
             accelerator= device,
             max_epochs=epochs,
             logger=mlflow_logger if mlflow_enabled else None,
-            deterministic=deterministic)
+            deterministic=deterministic,
+            callbacks=[MetricsCallback()] if mlflow_enabled else None)
 
         trainer.fit(model, train_dl, val_dl)

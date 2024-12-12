@@ -87,15 +87,31 @@ class LiUNet(L.LightningModule):
         x, y = batch
         y_hat = self(x)
         loss = self.criterion(y_hat, y)
+        
+        # Log the loss
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
-        return loss
+        
+        return {
+            'loss': loss,
+            'predictions': torch.argmax(y_hat, dim=1),
+            'targets': y,
+            'num_classes': self.hparams.out_channels
+        }
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
         loss = self.criterion(y_hat, y)
-        self.log("val_loss", loss, prog_bar=True)
-        return loss
+        
+        # Log the loss
+        self.log("val_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        
+        return {
+            'loss': loss,
+            'predictions': torch.argmax(y_hat, dim=1),
+            'targets': y,
+            'num_classes': self.hparams.out_channels
+        }
 
     def test_step(self, batch, batch_idx):
         x, y = batch
@@ -181,13 +197,14 @@ class DiceCrossEntropyLoss(nn.Module):
         super().__init__()
         self.cross_entropy = nn.CrossEntropyLoss()
         self.celoss_ratio = celoss_ratio
+        self.dims = dims
 
     def forward(self, outputs, labels):
         # Cross-entropy loss
         ce_loss = self.cross_entropy(outputs, labels)
         
         # Dice loss for each class
-        outputs_soft = F.softmax(outputs, dim=1)  # Softmax along the channel dimension
+        outputs_soft = F.softmax(outputs, dim=1)  # Softmax along the class dimension
         if self.dims == 3:
             # For 3D: (B, C, D, H, W) -> (B, H, W, D, C)
             labels_one_hot = F.one_hot(labels, num_classes=outputs.shape[1]).permute(0, 4, 1, 2, 3).float()
@@ -197,7 +214,7 @@ class DiceCrossEntropyLoss(nn.Module):
         
         dice_loss_value = self.dice_loss(outputs_soft, labels_one_hot)
         
-       # Combine losses (equal weighting of CE and Dice)
+       # Combine losses
         total_loss = ce_loss*self.celoss_ratio + dice_loss_value
         return total_loss
     
@@ -206,11 +223,12 @@ class DiceCrossEntropyLoss(nn.Module):
         Compute the average Dice loss across all classes.
         """
         dice_loss_per_class = []
-        for i in range(outputs_soft.shape[1]):  # Loop over each class
-            pred = outputs_soft[:, i]  # Softmax probability for class `i`
-            target = labels_one_hot[:, i]  # One-hot encoded ground truth for class `i`
-            intersection = (pred * target).sum(dim=(1, 2, 3))  # Sum over spatial dimensions
-            dice = (2.0 * intersection + smooth) / (pred.sum(dim=(1, 2, 3)) + target.sum(dim=(1, 2, 3)) + smooth)
+        for c in range(outputs_soft.shape[1]):  # Loop over each class
+            pred = outputs_soft[:, c]  # Softmax probability for class `c`
+            target = labels_one_hot[:, c]  # One-hot encoded ground truth for class `c`
+            dims = tuple(range(1, self.dims+1))
+            intersection = (pred * target).sum(dim=dims)  # Sum over spatial dimensions
+            dice = (2.0 * intersection + smooth) / (pred.sum(dim=dims) + target.sum(dim=dims) + smooth)
             dice_loss_per_class.append(1 - dice)  # Dice loss for class `i`
         # Average Dice loss over batch and classes
         dice_loss = torch.mean(torch.stack(dice_loss_per_class, dim=1), dim=1)  # Average over classes
