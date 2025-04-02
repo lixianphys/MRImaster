@@ -20,3 +20,8 @@ brain/
 !model_to_deploy.pt
 static/uploads
 mlruns/
+output/
+
+analysis.ipynb
+checkpoints/*
+mlflow.db
