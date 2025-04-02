@@ -1,0 +1,14 @@
+{
+    "seed": 42,
+    "device": "cpu",
+    "max_epochs": 2,
+    "model_name": "densenet",
+    "image_size": [256, 256],
+    "learning_rate": 1e-5,
+    "save_dir": "./checkpoints",
+    "batch_size": 32,
+    "train_img_path": "./data/raw_data/brain-tumor-classification-mri/Testing",
+    "val_img_path": "./data/raw_data/brain-tumor-classification-mri/Testing",
+    "mlflow_uri": "http://localhost:5000",
+    "experiment_name": "brain"
+}

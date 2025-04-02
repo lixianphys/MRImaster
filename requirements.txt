@@ -22,3 +22,6 @@ lightning==2.4.0
 streamlit==1.40.2
 segmentation-models-pytorch==0.3.4
 monai==1.4.0
+pytorch-ignite==0.5.1
+scikit-image==0.24.0
+einops==0.8.0

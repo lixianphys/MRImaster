@@ -1,0 +1,13 @@
+{
+    "seed": 42,
+    "device": "cpu", 
+    "max_epochs": 5,
+    "model_name": "unetr",
+    "save_dir": "./checkpoints",
+    "chunk_size": [64, 64, 64],
+    "learning_rate": 0.001,
+    "train_img_path": "./data/brats_train/imageTr",
+    "train_seg_path": "./data/brats_train/labelTr", 
+    "val_img_path": "./data/brats_val/imageTr",
+    "val_seg_path": "./data/brats_val/labelTr"
+}
